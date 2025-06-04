@@ -1,11 +1,13 @@
 from flask import Flask, render_template, request, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
-import os
 from flask import Flask, render_template, request, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from werkzeug.security import generate_password_hash, check_password_hash
+import os
 
 # Configuração do caminho do banco de dados
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -20,6 +22,17 @@ app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
+
+class User(UserMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(200), nullable=False)
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
 
 class Associado(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -53,15 +66,22 @@ def index():
 @app.route('/associados')
 def associados():
     hoje = datetime.now()
-    mes_atual = hoje.strftime('%m/%Y')
-    proximo_mes = (hoje.replace(day=1) + relativedelta(months=1)).strftime('%m/%Y')
-    
-    associados = Associado.query.order_by(Associado.numero).all()
+    # Formato YYYY-MM para consistência com o banco
+    mes_atual_interno = hoje.strftime('%Y-%m')
+    proximo_mes_interno = (hoje.replace(day=1) + relativedelta(months=1)).strftime('%Y-%m')
+
+    # Para exibição, você pode criar uma versão formatada MM/YYYY se preferir
+    mes_atual_display = hoje.strftime('%m/%Y')
+    proximo_mes_display = (hoje.replace(day=1) + relativedelta(months=1)).strftime('%m/%Y')
+
+    # ...
     return render_template(
         'associados.html',
         associados=associados,
-        mes_atual=mes_atual,
-        proximo_mes=proximo_mes
+        mes_atual=mes_atual_interno, # Usar o formato interno para lógica
+        mes_atual_display=mes_atual_display, # Usar para mostrar na tela
+        proximo_mes=proximo_mes_interno, # Usar o formato interno para o form
+        proximo_mes_display=proximo_mes_display # Usar para mostrar na tela
     )
 
 @app.route('/convidados')
@@ -132,3 +152,10 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
     app.run(host="0.0.0.0", port=5000, debug=True)
+
+
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login' # Rota para onde usuários não logados são redirecionados
+login_manager.login_message = "Você precisa estar logado para acessar esta página."
+login_manager.login_message_category = "info" # Categoria para flash messages (opcional)
