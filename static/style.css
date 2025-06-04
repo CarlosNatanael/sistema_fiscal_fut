@@ -1,53 +1,147 @@
-body {
-    font-family: Arial, sans-serif;
-    line-height: 1.6;
+/* Reset básico */
+* {
+    box-sizing: border-box;
     margin: 0;
     padding: 0;
 }
 
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background-color: #f5f5f5;
+}
+
+/* Container principal */
+.container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 15px;
+}
+
+/* Cabeçalho */
 header {
     background: #0056b3;
     color: white;
-    padding: 1rem;
+    padding: 1rem 0;
     text-align: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
 }
 
+/* Navegação */
 nav {
     background: #333;
-    padding: 0.5rem;
+    padding: 0.5rem 0;
+    position: sticky;
+    top: 60px;
+    z-index: 99;
 }
 
 nav a {
     color: white;
     margin: 0 1rem;
     text-decoration: none;
+    padding: 0.5rem 1rem;
+    display: inline-block;
+}
+
+/* Tabelas responsivas */
+.table-responsive {
+    overflow-x: auto;
+    margin: 1rem 0;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 table {
     width: 100%;
     border-collapse: collapse;
-    margin: 1rem 0;
+    min-width: 600px; /* Força scroll em telas pequenas */
 }
 
 th, td {
     border: 1px solid #ddd;
-    padding: 8px;
+    padding: 12px 8px;
     text-align: left;
 }
 
 th {
     background-color: #f2f2f2;
+    position: sticky;
+    top: 120px;
 }
 
 tr:nth-child(even) {
     background-color: #f9f9f9;
 }
 
+/* Formulários */
 form {
-    display: inline;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    align-items: center;
 }
 
-button, select {
-    padding: 5px;
-    margin: 2px;
+select, button {
+    padding: 8px 12px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+}
+
+button {
+    background-color: #0056b3;
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: #003d82;
+}
+
+/* Media Queries para responsividade */
+@media (max-width: 768px) {
+    nav {
+        text-align: center;
+    }
+    
+    nav a {
+        display: block;
+        margin: 0.3rem 0;
+    }
+    
+    th, td {
+        padding: 8px 5px;
+        font-size: 14px;
+    }
+    
+    select, button {
+        padding: 6px 10px;
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    header h1 {
+        font-size: 1.5rem;
+    }
+    
+    nav {
+        top: 56px;
+    }
+    
+    th {
+        top: 112px;
+        font-size: 13px;
+    }
+    
+    .container {
+        padding: 0 10px;
+    }
 }
