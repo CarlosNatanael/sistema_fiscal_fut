@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Lista de Associados</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Quantidade</th>
+            <th>Nome dos Associados</th>
+            <th>Mensalidade paga</th>
+            <th>Mês {{ mes_atual }}</th>
+            <th>Próximo mês</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for associado in associados %}
+        <tr>
+            <td>{{ associado.numero }}</td>
+            <td>{{ associado.nome }}{% if associado.apelido %} ({{ associado.apelido }}){% endif %}</td>
+            <td>
+                {% set pagamento = associado.pagamentos|selectattr("mes", "equalto", mes_atual)|first %}
+                {{ pagamento.status if pagamento else 'Pendente' }}
+            </td>
+            <td>
+                {% if pagamento and pagamento.data_pagamento %}
+                    {{ pagamento.data_pagamento.strftime('%d/%m/%Y') }}
+                {% endif %}
+            </td>
+            <td>
+                <form action="{{ url_for('registrar_pagamento', associado_id=associado.id) }}" method="post">
+                    <input type="hidden" name="mes" value="{{ proximo_mes }}">
+                    <select name="status">
+                        <option value="Pendente">Pendente</option>
+                        <option value="OK">OK</option>
+                        <option value="NA">NA</option>
+                    </select>
+                    <button type="submit">Atualizar</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

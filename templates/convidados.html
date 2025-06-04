@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Lista de Convidados</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Quantidade</th>
+            <th>Nome dos Convidados</th>
+            <th>Dia 31/05/2025</th>
+            <th>Dia {{ proxima_data }}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for convidado in convidados %}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ convidado.nome }}</td>
+            <td>
+                {% set presenca = convidado.presencas|selectattr("data", "equalto", datetime(2025, 5, 31).date())|first %}
+                {{ presenca.status if presenca else '-' }}
+            </td>
+            <td>
+                <form action="{{ url_for('registrar_presenca', convidado_id=convidado.id) }}" method="post">
+                    <input type="hidden" name="data" value="{{ proxima_data }}">
+                    <select name="status">
+                        <option value="Presente">Presente</option>
+                        <option value="Faltou">Faltou</option>
+                    </select>
+                    <button type="submit">Registrar</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
