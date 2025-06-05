@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="form-container">
+    <h2>Editar Associado</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('editar_associado', associado_id=associado.id) }}">
+        <div class="form-group">
+            <label for="numero" class="form-label">Número do Associado:</label>
+            <input type="number" id="numero" name="numero" class="form-control" value="{{ associado.numero }}" required>
+        </div>
+        <div class="form-group">
+            <label for="nome" class="form-label">Nome do Associado:</label>
+            <input type="text" id="nome" name="nome" class="form-control" value="{{ associado.nome }}" required>
+        </div>
+        <div class="form-group">
+            <label for="apelido" class="form-label">Apelido (Opcional):</label>
+            <input type="text" id="apelido" name="apelido" class="form-control" value="{{ associado.apelido or '' }}">
+        </div>
+        <div class="form-group">
+            <button type="submit" class="btn btn-primary btn-block">Salvar Alterações</button>
+            <a href="{{ url_for('associados') }}" class="btn btn-secondary btn-block" style="margin-top: 10px;">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="form-container">
+    <h2>Adicionar Novo</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('adicionar') }}" id="addForm">
+        <div class="form-group">
+            <label class="form-label">Tipo:</label>
+            <div>
+                <input type="radio" name="tipo" value="associado" id="tipo_associado" checked onchange="toggleFields()">
+                <label for="tipo_associado" style="margin-right: 15px; font-weight:normal;">Associado</label>
+                <input type="radio" name="tipo" value="convidado" id="tipo_convidado" onchange="toggleFields()">
+                <label for="tipo_convidado" style="font-weight:normal;">Convidado</label>
+            </div>
+        </div>
+
+        <div id="associado_fields">
+            <div class="form-group">
+                <label for="numero" class="form-label">Número do Associado:</label>
+                <input type="number" id="numero" name="numero" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="nome_associado" class="form-label">Nome do Associado:</label>
+                <input type="text" id="nome_associado" name="nome" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="apelido" class="form-label">Apelido (Opcional):</label>
+                <input type="text" id="apelido" name="apelido" class="form-control">
+            </div>
+        </div>
+
+        <div id="convidado_fields" style="display: none;">
+            <div class="form-group">
+                <label for="nome_convidado" class="form-label">Nome do Convidado:</label>
+                <input type="text" id="nome_convidado" name="nome_convidado_input" class="form-control">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <button type="submit" class="btn btn-primary btn-block">Adicionar</button>
+        </div>
+    </form>
+</div>
+
+<script>
+function toggleFields() {
+    const tipoAssociado = document.getElementById('tipo_associado').checked;
+    const associadoFields = document.getElementById('associado_fields');
+    const convidadoFields = document.getElementById('convidado_fields');
+    const nomeAssociadoInput = document.getElementById('nome_associado');
+    const nomeConvidadoInput = document.getElementById('nome_convidado'); // LINHA CORRIGIDA
+
+    if (tipoAssociado) {
+        associadoFields.style.display = 'block';
+        convidadoFields.style.display = 'none';
+        nomeAssociadoInput.name = 'nome'; // Ativa o campo nome para associado
+        if (nomeConvidadoInput) nomeConvidadoInput.name = 'nome_convidado_input_disabled'; // Desativa o campo nome para convidado
+    } else {
+        associadoFields.style.display = 'none';
+        convidadoFields.style.display = 'block';
+        if (nomeAssociadoInput) nomeAssociadoInput.name = 'nome_associado_input_disabled'; // Desativa o campo nome para associado
+        if (nomeConvidadoInput) nomeConvidadoInput.name = 'nome'; // Ativa o campo nome para convidado
+    }
+}
+
+// Chamar na carga inicial para configurar os campos corretamente
+document.addEventListener('DOMContentLoaded', toggleFields);
+</script>
+{% endblock %}

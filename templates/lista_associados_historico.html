@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="form-container">
+    <h2>Histórico de Pagamentos por Associado</h2>
+    <p>Selecione um associado para ver e gerenciar seu histórico de pagamentos.</p>
+    <ul class="list-group">
+        {% for associado_item in associados %}
+        <li class="list-group-item">
+            <a href="{{ url_for('historico_pagamentos_associado', associado_id=associado_item.id) }}">
+                {{ associado_item.nome }} {% if associado_item.apelido %} ({{ associado_item.apelido }}) {% endif %} - Nº {{ associado_item.numero }}
+            </a>
+        </li>
+        {% else %}
+        <li class="list-group-item">Nenhum associado encontrado.</li>
+        {% endfor %}
+    </ul>
+</div>
+{# Adicione algum estilo básico para list-group se desejar, ou use classes de um framework #}
+<style>
+    .list-group { list-style: none; padding-left: 0; }
+    .list-group-item { padding: 10px 15px; border: 1px solid #ddd; margin-bottom: -1px; }
+    .list-group-item a { text-decoration: none; color: #0056b3; }
+    .list-group-item a:hover { text-decoration: underline; }
+</style>
+{% endblock %}

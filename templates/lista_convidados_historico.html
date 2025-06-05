@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="form-container">
+    <h2>Histórico de Jogos por Convidado</h2>
+    <p>Selecione um convidado para ver e gerenciar seu histórico de jogos e pagamentos de taxa.</p>
+    {% if convidados %}
+    <ul class="list-group">
+        {% for convidado_item in convidados %}
+        <li class="list-group-item">
+            <a href="{{ url_for('historico_jogos_convidado', convidado_id=convidado_item.id) }}">
+                {{ convidado_item.nome }}
+            </a>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p>Nenhum convidado cadastrado.</p>
+    {% endif %}
+</div>
+{# Você pode reutilizar os estilos de .list-group da página de histórico de associados ou movê-los para style.css #}
+{% endblock %}

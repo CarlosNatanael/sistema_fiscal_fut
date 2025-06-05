@@ -6,10 +6,17 @@
 }
 
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'Roboto', sans-serif; /* Alterado para Roboto */
     line-height: 1.6;
     color: #333;
     background-color: #f5f5f5;
+    position: relative;
+    -webkit-font-smoothing: antialiased; /* Melhora renderização da fonte em alguns navegadores */
+    -moz-osx-font-smoothing: grayscale; /* Melhora renderização da fonte em alguns navegadores */
+}
+
+input, select, button, textarea {
+    font-family: 'Roboto', sans-serif; /* Garante que elementos de formulário usem a fonte */
 }
 
 /* Container principal */
@@ -22,16 +29,54 @@ body {
 
 /* Cabeçalho */
 header {
-    background: #0056b3;
-    color: white;
-    padding: 1rem 0;
-    text-align: center;
-    position: sticky;
-    top: 0;
-    z-index: 100;
+    background: #0056b3; /* */
+    color: white; /* */
+    padding: 1rem 0; /* */
+    text-align: center; /* */
+    position: sticky; /* */
+    top: 0; /* */
+    z-index: 1000; /* Aumentado para ficar sobre a sidebar se necessário */
 }
 
-/* Navegação */
+.header-content {
+    display: flex;
+    /* justify-content: space-between; Comente ou remova esta linha */
+    align-items: center;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 15px;
+}
+
+
+#menuToggleButton {
+    /* ... todos os seus estilos existentes para o botão ... */
+    background: #004085;
+    border: none;
+    cursor: pointer;
+    border-radius: 4px;
+    display: block; 
+    width: 40px;
+    height: 35px;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    align-items: center;
+
+    margin-right: 15px; /* Adiciona um espaço entre o botão e o título */
+}
+/* Estilos para as linhas do hambúrguer */
+.hamburger-line {
+    display: block;
+    width: 100%;       /* Largura total do espaço interno do botão */
+    height: 3px;        /* Altura/espessura de cada linha */
+    background-color: white; /* Cor das linhas */
+    border-radius: 3px; /* Para deixar as pontas das linhas levemente arredondadas (opcional) */
+}
+
+/* Antiga navegação - Remova ou comente os estilos antigos da nav horizontal */
+/*
 nav {
     background: #333;
     padding: 0.5rem 0;
@@ -47,101 +92,403 @@ nav a {
     padding: 0.5rem 1rem;
     display: inline-block;
 }
+*/
 
-/* Tabelas responsivas */
-.table-responsive {
-    overflow-x: auto;
-    margin: 1rem 0;
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+/* Nova Sidebar */
+#sidebarNav {
+    height: 100%; /* Altura total */
+    width: 250px; /* Largura da sidebar */
+    position: fixed; /* Fixa na tela */
+    z-index: 999; /* Abaixo do header, mas acima do conteúdo */
+    top: 0;
+    left: -250px; /* Começa fora da tela à esquerda */
+    background-color: #333; /* Cor de fundo */
+    overflow-x: hidden; /* Esconde conteúdo horizontal que transborda */
+    padding-top: 70px; /* Espaço para o header (ajuste conforme altura do seu header) */
+    transition: 0.3s; /* Animação suave para abrir/fechar */
+    display: flex;
+    flex-direction: column;
 }
 
-table {
-    width: 100%;
-    border-collapse: collapse;
-    min-width: 600px; /* Força scroll em telas pequenas */
+#sidebarNav a i {
+    margin-right: 8px;
 }
 
-th, td {
-    border: 1px solid #ddd;
-    padding: 12px 8px;
-    text-align: left;
+#sidebarNav.open {
+    left: 0; /* Move a sidebar para dentro da tela */
+}
+
+#sidebarNav a {
+    padding: 10px 15px;
+    text-decoration: none;
+    font-size: 1.1rem;
+    color: white;
+    display: block; /* Links ocupam toda a largura */
+    transition: 0.2s;
+}
+
+#sidebarNav a:hover {
+    background-color: #555;
+}
+
+/* Ajuste do main content quando a sidebar estiver potencialmente visível (opcional) */
+/* Se quiser que o conteúdo principal empurre, em vez de a sidebar sobrepor: */
+/*
+body.sidebar-open-main-push main {
+    margin-left: 250px;
+    transition: margin-left 0.3s;
+}
+*/
+
+/* Tabelas responsivas - MANTIDO */
+.table-responsive { /* */
+    overflow-x: auto; /* */
+    margin: 1rem 0; /* */
+    background: white; /* */
+    border-radius: 8px; /* */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* */
+}
+
+table { /* */
+    width: 100%; /* */
+    border-collapse: collapse; /* */
+    min-width: 600px; /* */
+}
+
+th, td { /* */
+    border: 1px solid #ddd; /* */
+    padding: 12px 8px; /* */
+    text-align: left; /* */
 }
 
 th {
     background-color: #f2f2f2;
-    position: sticky;
-    top: 120px;
+    border: 1px solid #ddd; /* */
+    padding: 12px 8px; /* */
+    text-align: left; /* */
 }
 
-tr:nth-child(even) {
-    background-color: #f9f9f9;
+tr:nth-child(even) { /* */
+    background-color: #f9f9f9; /* */
 }
 
-/* Formulários */
-form {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-    align-items: center;
+/* Formulários - MANTIDO */
+form { /* */
+    display: flex; /* */
+    flex-wrap: wrap; /* */
+    gap: 5px; /* */
+    align-items: center; /* */
 }
 
-select, button {
-    padding: 8px 12px;
-    border-radius: 4px;
-    border: 1px solid #ddd;
+select, button { /* */
+    padding: 8px 12px; /* */
+    border-radius: 4px; /* */
+    border: 1px solid #ddd; /* */
 }
 
-button {
-    background-color: #0056b3;
-    color: white;
-    border: none;
-    cursor: pointer;
-    transition: background-color 0.3s;
+button { /* */
+    background-color: #0056b3; /* */
+    color: white; /* */
+    border: none; /* */
+    cursor: pointer; /* */
+    transition: background-color 0.3s; /* */
 }
 
-button:hover {
-    background-color: #003d82;
+button:hover { /* */
+    background-color: #003d82; /* */
 }
 
 /* Media Queries para responsividade */
-@media (max-width: 768px) {
-    nav {
-        text-align: center;
+@media (max-width: 768px) { /* */
+    #menuToggleButton {
+        display: block; /* Mostrar o botão do menu em telas menores */
+    }
+
+    header h1 {
+        flex-grow: 1; /* Ajustar tamanho do título para caber o botão */
+    }
+
+    /* Ocultar a antiga nav se ela ainda tiver algum estilo que a faça aparecer */
+    /* nav { display: none; } - Se você removeu os estilos dela, isso não é necessário. */
+
+    /* Ajustes de tabela e formulários mantidos */
+    th, td { /* */
+        padding: 8px 5px; /* */
+        font-size: 14px; /* */
     }
     
-    nav a {
-        display: block;
-        margin: 0.3rem 0;
+    select, button { /* */
+        padding: 6px 10px; /* */
+        font-size: 14px; /* */
+    }
+
+    /* th rule removed because it was empty */
+}
+
+@media (max-width: 480px) { /* */
+    header h1 { /* */
+        font-size: 1rem; /* */
     }
     
-    th, td {
-        padding: 8px 5px;
-        font-size: 14px;
-    }
-    
-    select, button {
-        padding: 6px 10px;
-        font-size: 14px;
+    .container { /* */
+        padding: 0 10px; /* */
     }
 }
 
-@media (max-width: 480px) {
-    header h1 {
-        font-size: 1.5rem;
-    }
-    
-    nav {
-        top: 56px;
-    }
-    
-    th {
-        top: 112px;
-        font-size: 13px;
-    }
-    
-    .container {
-        padding: 0 10px;
-    }
+/* Alertas de Flash Messages */
+.alert {
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+}
+.alert-success {
+    color: #155724;
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+}
+.alert-danger {
+    color: #721c24;
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+}
+.alert-info {
+    color: #0c5460;
+    background-color: #d1ecf1;
+    border-color: #bee5eb;
+}
+
+/* Estilos da Página de Login */
+.login-container {
+    max-width: 450px; /* Largura máxima do card de login */
+    margin: 40px auto; /* Centraliza o card na página e adiciona margem no topo/baixo */
+    padding: 30px 35px;
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e0e0e0; /* Borda sutil */
+}
+
+.login-container h2 {
+    text-align: center;
+    margin-bottom: 25px;
+    color: #333;
+    font-weight: 600; /* Um pouco mais de peso na fonte */
+}
+
+.login-form .form-group {
+    margin-bottom: 20px;
+}
+
+.login-form .form-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #495057; /* Cor de texto mais suave */
+    font-size: 0.9rem;
+}
+
+.login-form .form-control {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid #ced4da; /* Borda padrão mais clara */
+    border-radius: 5px; /* Bordas levemente mais arredondadas */
+    font-size: 1rem;
+    color: #495057;
+    background-color: #fff;
+    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.login-form .form-control:focus {
+    border-color: #0056b3; /* Cor da borda no foco, igual ao header */ /* */
+    outline: 0; /* Remove o outline padrão do navegador */
+    box-shadow: 0 0 0 0.2rem rgba(0, 86, 179, 0.25); /* Sombra no foco, igual ao header */
+}
+
+.btn-login { /* Estilo específico para o botão de login */
+    display: block;
+    width: 100%;
+    padding: 12px 15px;
+    background-color: #0056b3; /* Cor principal do site */ /* */
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 1.1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out, transform 0.1s ease;
+    text-align: center;
+}
+
+.btn-login:hover {
+    background-color: #004085; /* Cor mais escura no hover */ /* Similar ao button:hover do estilo original */
+    transform: translateY(-1px); /* Leve efeito ao passar o mouse */
+}
+
+.btn-login:active {
+    transform: translateY(0); /* Remove o efeito ao clicar */
+}
+
+/* Ajustes nos alertas de flash messages para o contexto do login, se necessário */
+.login-container .alert {
+    margin-top: 0; /* Para não ter margem dupla com o h2 */
+    margin-bottom: 20px;
+    padding: 12px 15px;
+    font-size: 0.9rem;
+}
+/* Estilos para Container de Formulários (Adicionar/Editar) */
+.form-container {
+    max-width: 600px; /* Pode ser um pouco maior que o de login */
+    margin: 40px auto;
+    padding: 30px 35px;
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e0e0e0;
+}
+
+.form-container h2 {
+    text-align: center;
+    margin-bottom: 25px;
+    color: #333;
+    font-weight: 600;
+}
+
+/* Reutilize os estilos de .form-group, .form-label, .form-control do login
+   Se eles foram prefixados (ex: .login-form .form-group),
+   você pode criar versões genéricas ou duplicá-los para .form-container */
+
+/* Exemplo de estilos genéricos se não existirem: */
+.form-container .form-group {
+    margin-bottom: 20px;
+}
+
+.form-container .form-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #495057;
+    font-size: 0.9rem;
+}
+
+.form-container .form-control {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid #ced4da;
+    border-radius: 5px;
+    font-size: 1rem;
+    color: #495057;
+    background-color: #fff;
+    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.form-container .form-control:focus {
+    border-color: #0056b3; /* */
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(0, 86, 179, 0.25);
+}
+
+.btn-primary.btn-block { /* Para o botão de adicionar */
+    display: block;
+    width: 100%;
+    padding: 12px 15px;
+    background-color: #0056b3; /* */
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 1.1rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: center;
+    transition: background-color 0.2s ease-in-out, transform 0.1s ease;
+}
+
+.btn-primary.btn-block:hover {
+    background-color: #004085; /* [Similar ao button:hover do estilo original] */
+    transform: translateY(-1px);
+}
+
+button, .btn { /* Aplicar a <button> e a classes .btn */
+    display: inline-block; /* Para que padding e margin funcionem bem em <a> com .btn */
+    font-weight: bold; /* (Peso 700 do Roboto se importado) ou 500/600 */
+    text-align: center;
+    vertical-align: middle;
+    cursor: pointer;
+    user-select: none; /* Evita seleção de texto no botão */
+    background-color: #0056b3; /* Cor primária atual */
+    border: 1px solid transparent; /* Borda transparente por padrão */
+    padding: 0.5rem 1rem; /* Ajuste o padding conforme necessário */
+    font-size: 0.95rem; /* Um pouco menor ou igual ao texto base */
+    line-height: 1.5;
+    border-radius: 0.3rem; /* Bordas um pouco mais suaves */
+    color: white;
+    text-decoration: none; /* Para links com classe .btn */
+    transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+button:hover, .btn:hover {
+    background-color: #004085; /* Escurece um pouco no hover */
+    color: white;
+    text-decoration: none;
+}
+
+button:focus, .btn:focus {
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(0, 86, 179, 0.4); /* Sombra de foco sutil */
+}
+
+/* Seus botões específicos podem sobrescrever ou adicionar a estes estilos */
+/* Ex: .btn-primary, .btn-login, .btn-update-payment, etc. */
+
+/* Exemplo de como .btn-primary poderia ser: */
+.btn-primary {
+    background-color: #0056b3;
+    border-color: #0056b3;
+    color: white;
+}
+.btn-primary:hover {
+    background-color: #004085;
+    border-color: #003d82;
+}
+
+/* Botões menores que já criamos */
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: .875rem;
+    line-height: 1.5;
+    border-radius: .2rem;
+}
+
+/* Botões outline que já criamos */
+.btn-outline-primary {
+    color: #0056b3;
+    border-color: #0056b3;
+    background-color: transparent; /* Fundo transparente para outline */
+}
+.btn-outline-primary:hover {
+    color: #fff;
+    background-color: #0056b3;
+    border-color: #0056b3;
+}
+
+/* Botão de Atualizar na tabela de histórico (já tem um estilo específico) */
+/* Considere unificar com .btn-primary ou .btn-sm */
+.btn-update-payment {
+    /* Seus estilos atuais, podem ser simplificados para herdar de .btn e .btn-sm */
+    white-space: nowrap;
+}
+
+/* Botão Cancelar (btn-secondary.btn-block) */
+.btn-secondary {
+    color: #fff;
+    background-color: #6c757d;
+    border-color: #6c757d;
+}
+.btn-secondary:hover {
+    background-color: #5a6268;
+    border-color: #545b62;
+}
+.btn-block { /* Para botões de largura total */
+    display: block;
+    width: 100%;
 }

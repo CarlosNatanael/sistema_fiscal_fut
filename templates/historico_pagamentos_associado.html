@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="form-container">
+    <h2>Histórico de Pagamentos para: {{ associado.nome }}</h2>
+    <p><a href="{{ url_for('lista_associados_para_historico') }}" class="btn btn-sm btn-outline-secondary">&laquo; Voltar para Lista de Associados</a></p>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Mês</th>
+                    <th>Status</th>
+                    <th>Data Pagamento Realizado</th>
+                    {% if current_user.is_authenticated %}
+                    <th>Registrar/Alterar Pagamento</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for item_historico in historico_display %}
+                <tr>
+                    <td>{{ item_historico.mes_display }}</td>
+                    <td>{{ item_historico.status }}</td>
+                    <td>{{ item_historico.data_pagamento_display if item_historico.data_pagamento_display else '-' }}</td>
+                    {% if current_user.is_authenticated %}
+                    <td>
+                        {% set form_id_suffix = associado.id ~ "_" ~ item_historico.mes_yyyymm.replace('-', '') %}
+                        <form action="{{ url_for('registrar_pagamento', associado_id=associado.id) }}" method="post" class="payment-form-inline">
+                            <input type="hidden" name="mes" value="{{ item_historico.mes_yyyymm }}">
+                            
+                            <select name="status" id="status_{{ form_id_suffix }}" class="form-control form-control-sm select-status" onchange="togglePaymentDateField('{{ form_id_suffix }}')">
+                                <option value="Pendente" {% if item_historico.status == 'Pendente' %}selected{% endif %}>Pendente</option>
+                                <option value="OK" {% if item_historico.status == 'OK' %}selected{% endif %}>OK</option>
+                                <option value="NA" {% if item_historico.status == 'NA' %}selected{% endif %}>NA</option>
+                            </select>
+                            
+                            <div class="date-input-wrapper" id="date_field_container_{{ form_id_suffix }}" style="display: {% if item_historico.status == 'OK' %}inline-block{% else %}none{% endif %};">
+                                <input type="date" name="data_pagamento_input" id="data_pagamento_input_{{ form_id_suffix }}" 
+                                       class="form-control form-control-sm date-input"
+                                       value="{{ item_historico.data_pagamento_input_value if item_historico.data_pagamento_input_value and item_historico.status == 'OK' else '' }}">
+                            </div>
+                            
+                            <button type="submit" class="btn btn-sm btn-primary btn-update-payment">Atualizar</button>
+                        </form>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="{% if current_user.is_authenticated %}4{% else %}3{% endif %}">Nenhum histórico de pagamento para este range.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function togglePaymentDateField(suffix) {
+    const statusSelect = document.getElementById('status_' + suffix);
+    const dateFieldContainer = document.getElementById('date_field_container_' + suffix); // Este é o date-input-wrapper
+    const dateInput = document.getElementById('data_pagamento_input_' + suffix);
+
+    if (statusSelect.value === 'OK') {
+        dateFieldContainer.style.display = 'inline-block'; // Ou 'block' se preferir que ele tenha sua própria linha mas ainda seja compacto
+        dateInput.required = true;
+        if (!dateInput.value) {
+            const today = new Date();
+            dateInput.value = today.toISOString().split('T')[0];
+        }
+    } else {
+        dateFieldContainer.style.display = 'none';
+        dateInput.required = false;
+        dateInput.value = ''; 
+    }
+}
+
+// Inicializa o estado dos campos de data para todos os formulários ao carregar a página
+document.addEventListener('DOMContentLoaded', function() {
+    const allStatusSelects = document.querySelectorAll('.select-status');
+    allStatusSelects.forEach(selectElement => {
+        if (selectElement.id) {
+            const suffix = selectElement.id.replace('status_', '');
+            togglePaymentDateField(suffix);
+        }
+    });
+});
+</script>
+
+<style>
+/* Estilos para o formulário de pagamento na tabela (mova para style.css se preferir) */
+/* Estilos para o formulário de pagamento inline na tabela de histórico */
+.payment-form-inline {
+    display: flex;
+    flex-wrap: nowrap; /* Tenta manter tudo na mesma linha */
+    align-items: center; /* Alinha verticalmente os itens */
+    gap: 5px; /* Espaço entre os elementos */
+    min-width: 300px; /* Dá um espaço mínimo para os controles não quebrarem muito cedo */
+}
+
+.payment-form-inline .select-status {
+    min-width: 100px; /* Largura mínima para o select */
+    /* flex-grow: 1; Pode ser removido ou ajustado se os inputs ficarem muito grandes */
+}
+
+.payment-form-inline .date-input-wrapper {
+    /* O display é controlado por JS (inline-block or none) */
+}
+
+.payment-form-inline .date-input {
+    min-width: 130px; /* Largura para o campo de data */
+    padding: .25rem .3rem; /* Ajuste fino no padding do input de data */
+}
+
+.payment-form-inline .btn-update-payment {
+    white-space: nowrap; /* Para o texto "Atualizar" não quebrar */
+    padding: .25rem .5rem; /* Consistente com form-control-sm */
+}
+
+/* Seus estilos existentes para .form-control-sm devem ser aplicados */
+.form-control-sm {
+    padding: .25rem .5rem; 
+    font-size: .875rem; 
+    line-height: 1.5; 
+    border-radius: .2rem;
+    /* Remove height: auto; se existir, para melhor controle com padding */
+}
+</style>
+{% endblock %}

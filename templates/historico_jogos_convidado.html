@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="form-container">
+    <h2>Histórico de Jogos e Pagamentos para: {{ convidado.nome }}</h2>
+    <p><a href="{{ url_for('lista_convidados_para_historico_jogos') }}" class="btn btn-sm btn-outline-secondary">&laquo; Voltar para Lista de Convidados</a></p>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Data do Jogo</th>
+                    <th>Presença</th>
+                    <th>Pagou Taxa?</th>
+                    {% if current_user.is_authenticated %}
+                    <th>Registrar/Alterar</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for item_jogo in historico_jogos %}
+                <tr>
+                    <td>{{ item_jogo.data_display }}</td>
+                    <td>{{ item_jogo.status_presenca }}</td>
+                    <td>{{ item_jogo.pagamento_jogo }}</td>
+                    {% if current_user.is_authenticated %}
+                    <td>
+                        {% set form_id_suffix = convidado.id ~ "_" ~ item_jogo.data_obj.strftime('%Y%m%d') %}
+                        <form action="{{ url_for('registrar_presenca', convidado_id=convidado.id) }}" method="post" class="payment-form-inline" id="form_presenca_{{ form_id_suffix }}">
+                            <input type="hidden" name="data" value="{{ item_jogo.data_for_input }}">
+                            
+                            <select name="status" id="status_presenca_{{ form_id_suffix }}" class="form-control form-control-sm select-status-presenca" onchange="toggleConvidadoPagamentoField('{{ form_id_suffix }}')">
+                                <option value="Não Registrado" {% if item_jogo.status_presenca == 'Não Registrado' %}selected{% endif %}>Não Registrado</option>
+                                <option value="Presente" {% if item_jogo.status_presenca == 'Presente' %}selected{% endif %}>Presente</option>
+                                <option value="Faltou" {% if item_jogo.status_presenca == 'Faltou' %}selected{% endif %}>Faltou</option>
+                            </select>
+                            
+                            <div class="pagamento-jogo-wrapper" id="convidado_pagamento_jogo_div_{{ form_id_suffix }}" style="display: {% if item_jogo.status_presenca == 'Presente' %}inline-block{% else %}none{% endif %};">
+                                <select name="pagamento_jogo_status" id="pagamento_jogo_status_{{ form_id_suffix }}" class="form-control form-control-sm">
+                                    <option value="Pendente" {% if item_jogo.pagamento_jogo == 'Pendente' or item_jogo.status_presenca != 'Presente' %}selected{% endif %}>Pendente</option>
+                                    <option value="Pago" {% if item_jogo.pagamento_jogo == 'Pago' %}selected{% endif %}>Pago</option>
+                                    <option value="Dispensado" {% if item_jogo.pagamento_jogo == 'Dispensado' %}selected{% endif %}>Dispensado</option>
+                                </select>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-sm btn-primary btn-update-payment">Salvar</button>
+                        </form>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="{% if current_user.is_authenticated %}4{% else %}3{% endif %}">Nenhum jogo neste range para exibir ou registrar.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function toggleConvidadoPagamentoField(suffix) {
+    const statusPresencaSelect = document.getElementById('status_presenca_' + suffix);
+    const pagamentoJogoDiv = document.getElementById('convidado_pagamento_jogo_div_' + suffix);
+    // const pagamentoJogoSelect = document.getElementById('pagamento_jogo_status_' + suffix); // Não usado diretamente aqui
+
+    if (statusPresencaSelect && pagamentoJogoDiv) { // Adiciona verificação de nulidade
+        if (statusPresencaSelect.value === 'Presente') {
+            pagamentoJogoDiv.style.display = 'inline-block';
+        } else {
+            pagamentoJogoDiv.style.display = 'none';
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const allStatusPresencaSelects = document.querySelectorAll('.select-status-presenca');
+    allStatusPresencaSelects.forEach(selectElement => {
+        if (selectElement.id) {
+            const suffix = selectElement.id.replace('status_presenca_', '');
+            // Garante que os elementos existam antes de chamar a função
+            if (document.getElementById('convidado_pagamento_jogo_div_' + suffix)) {
+                 toggleConvidadoPagamentoField(suffix);
+            }
+        }
+    });
+});
+</script>
+{# Mova os estilos de .payment-form-inline, .select-status-presenca, .pagamento-jogo-wrapper para seu style.css principal #}
+<style>
+    .payment-form-inline .select-status-presenca,
+    .payment-form-inline .pagamento-jogo-wrapper select {
+        min-width: 110px; /* Ajuste conforme necessário */
+        margin-right: 5px; /* Espaçamento */
+    }
+    .pagamento-jogo-wrapper {
+         display: inline-block; /* Controlado por JS */
+    }
+</style>
+{% endblock %}

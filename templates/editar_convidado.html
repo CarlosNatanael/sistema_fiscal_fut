@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="form-container">
+    <h2>Editar Convidado</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('editar_convidado', convidado_id=convidado.id) }}">
+        <div class="form-group">
+            <label for="nome" class="form-label">Nome do Convidado:</label>
+            <input type="text" id="nome" name="nome" class="form-control" value="{{ convidado.nome }}" required>
+        </div>
+        <div class="form-group">
+            <button type="submit" class="btn btn-primary btn-block">Salvar Alterações</button>
+            <a href="{{ url_for('convidados') }}" class="btn btn-secondary btn-block" style="margin-top: 10px;">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

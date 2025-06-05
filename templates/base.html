@@ -4,23 +4,62 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Associados Futebol Clube</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
 </head>
 <body>
     <header>
-        <div class="container">
+        <div class="container header-content">
+            <button id="menuToggleButton" aria-label="Abrir menu" aria-expanded="false">
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+            </button>
             <h1>ASSOCIADOS FUTEBOL CLUBE</h1>
         </div>
     </header>
-    <nav>
-        <div class="container">
-            <a href="{{ url_for('associados') }}">Associados</a>
-            <a href="{{ url_for('convidados') }}">Convidados</a>
-            <a href="{{ url_for('adicionar') }}">Adicionar</a>
-        </div>
+
+    <nav id="sidebarNav">
+        <a href="{{ url_for('associados') }}"><i class="fas fa-users fa-fw"></i> Associados</a>
+        <a href="{{ url_for('convidados') }}"><i class="fas fa-user-tie fa-fw"></i> Convidados</a>
+        {% if current_user.is_authenticated %}
+            <a href="{{ url_for('adicionar') }}"><i class="fas fa-plus-circle fa-fw"></i> Adicionar</a>
+        <a href="{{ url_for('lista_associados_para_historico') }}"><i class="fas fa-file-invoice-dollar fa-fw"></i> Pagamentos Associados</a>
+        <a href="{{ url_for('lista_convidados_para_historico_jogos') }}"><i class="fas fa-calendar-check fa-fw"></i> Jogos e Taxas Convidados</a>
+            <a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt fa-fw"></i> Logout ({{ current_user.username }})</a>
+        {% else %}
+            <a href="{{ url_for('login') }}"><i class="fas fa-sign-in-alt fa-fw"></i> Login Admin</a>
+        {% endif %}
     </nav>
+
     <main class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages and request.endpoint != 'login' %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
         {% block content %}{% endblock %}
     </main>
+
+    <script>
+        // JavaScript para o toggle da sidebar
+        const menuToggleButton = document.getElementById('menuToggleButton');
+        const sidebarNav = document.getElementById('sidebarNav');
+
+        menuToggleButton.addEventListener('click', () => {
+            const isExpanded = menuToggleButton.getAttribute('aria-expanded') === 'true' || false;
+            menuToggleButton.setAttribute('aria-expanded', !isExpanded);
+            sidebarNav.classList.toggle('open');
+            // Opcional: Adicionar uma classe ao body para, por exemplo, escurecer o main content
+            // document.body.classList.toggle('sidebar-open-overlay');
+        });
+    </script>
+
 </body>
 </html>

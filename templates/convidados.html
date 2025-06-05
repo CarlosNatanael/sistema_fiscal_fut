@@ -5,33 +5,70 @@
 <table>
     <thead>
         <tr>
-            <th>Quantidade</th>
             <th>Nome dos Convidados</th>
-            <th>Dia 31/05/2025</th>
-            <th>Dia {{ proxima_data }}</th>
+            <th>Dia 31/05/2025</th> <th>Dia {{ proxima_data }}</th> {% if current_user.is_authenticated %}
+            <th>Ações</th> {# Nova coluna #}
+            {% endif %}
         </tr>
     </thead>
     <tbody>
         {% for convidado in convidados %}
         <tr>
-            <td>{{ loop.index }}</td>
             <td>{{ convidado.nome }}</td>
             <td>
-                {% set presenca = convidado.presencas|selectattr("data", "equalto", datetime(2025, 5, 31).date())|first %}
-                {{ presenca.status if presenca else '-' }}
+                {% set presenca = convidado.presencas|selectattr("data", "equalto", data_evento_fixa)|first %}
+                {{ presenca.status if presenca else 'Presente' }}
             </td>
-            <td>
-                <form action="{{ url_for('registrar_presenca', convidado_id=convidado.id) }}" method="post">
-                    <input type="hidden" name="data" value="{{ proxima_data }}">
-                    <select name="status">
-                        <option value="Presente">Presente</option>
-                        <option value="Faltou">Faltou</option>
+            <td> {% if current_user.is_authenticated %}
+            <form action="{{ url_for('registrar_presenca', convidado_id=convidado.id) }}" method="post" id="form_presenca_{{ convidado.id }}">
+                <input type="hidden" name="data" value="{{ proxima_data }}">
+                <select name="status" onchange="togglePagamentoJogoField({{ convidado.id }})">
+                    <option value="Presente">Presente</option>
+                    <option value="Faltou" selected>Faltou</option> {# Ou o status atual #}
+                </select>
+            
+                <div id="pagamento_jogo_div_{{ convidado.id }}" style="display:none; margin-top:5px;">
+                    <label for="pagamento_jogo_status_{{ convidado.id }}">Pagou Jogo?</label>
+                    <select name="pagamento_jogo_status" id="pagamento_jogo_status_{{ convidado.id }}">
+                        <option value="Pago">Pago</option>
+                        <option value="Pendente" selected>Pendente</option>
+                        <option value="Dispensado">Dispensado</option>
                     </select>
-                    <button type="submit">Registrar</button>
-                </form>
+                </div>
+                <button type="submit">Registrar</button>
+            </form>
             </td>
+            {% endif %}
+            {% if current_user.is_authenticated %}
+            <td> {# Célula para ações #}
+                <a href="{{ url_for('editar_convidado', convidado_id=convidado.id) }}" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-edit"></i> Editar
+                </a>
+                {# Botão de Excluir pode vir aqui #}
+            </td>
+            {% endif %}
         </tr>
         {% endfor %}
     </tbody>
 </table>
+<script>
+// Função JS para mostrar/esconder o campo de pagamento do jogo
+// (coloque em um local apropriado, talvez no final do body ou em um arquivo JS)
+function togglePagamentoJogoField(convidadoId) {
+    const form = document.getElementById('form_presenca_' + convidadoId);
+    const statusPresenca = form.querySelector('select[name="status"]').value;
+    const pagamentoDiv = document.getElementById('pagamento_jogo_div_' + convidadoId);
+    if (statusPresenca === 'Presente') {
+        pagamentoDiv.style.display = 'block'; // ou 'flex' etc.
+    } else {
+        pagamentoDiv.style.display = 'none';
+    }
+}
+// Chamar para estado inicial (se necessário, baseado no status carregado)
+// document.addEventListener('DOMContentLoaded', () => {
+//    document.querySelectorAll('select[name="status"]').forEach(s => {
+//        if (s.onchange) s.onchange(); // Simula o onchange para setar o estado inicial
+//    });
+// });
+</script>
 {% endblock %}
