@@ -22,7 +22,7 @@
             <td> {% if current_user.is_authenticated %}
             <form action="{{ url_for('registrar_presenca', convidado_id=convidado.id) }}" method="post" id="form_presenca_{{ convidado.id }}">
                 <input type="hidden" name="data" value="{{ proxima_data }}">
-                <select name="status" onchange="togglePagamentoJogoField({{ convidado.id }})">
+                <select name="status" onchange="togglePagamentoJogoField('{{ convidado.id }}')">
                     <option value="Presente">Presente</option>
                     <option value="Faltou" selected>Faltou</option> {# Ou o status atual #}
                 </select>
@@ -49,6 +49,11 @@
             {% endif %}
         </tr>
         {% endfor %}
+            {% if not convidados %}
+            <tr>
+                <td colspan="{% if current_user.is_authenticated %}5{% else %}4{% endif %}">Nenhum convidado encontrado.</td>
+            </tr>
+            {% endif %}
     </tbody>
 </table>
 <script>

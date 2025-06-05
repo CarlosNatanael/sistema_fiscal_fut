@@ -1,29 +1,51 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="login-container">
-    <h2>Login do Administrador</h2>
+<div class="login-page-wrapper"> {# Novo wrapper para centralizar verticalmente se desejado #}
+    <div class="login-container modern-login-card"> {# Adicionada nova classe para estilos específicos #}
+        {# Opcional: Adicionar um logo ou ícone do site aqui #}
+        {# <div class="login-logo-container"><i class="fas fa-shield-alt fa-3x"></i></div> #}
+        <h2>Login do Administrador</h2>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          <div class="alert alert-{{ category }}">{{ message }}</div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              {# Integrar o alerta dentro do card para melhor visualização #}
+              <div class="alert alert-{{ category }} login-alert">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
 
-    <form method="POST" action="{{ url_for('login') }}" class="login-form">
-        <div class="form-group">
-            <label for="username" class="form-label">Usuário:</label>
-            <input type="text" id="username" name="username" class="form-control" required>
+        <form method="POST" action="{{ url_for('login') }}" class="login-form">
+            <div class="form-group">
+                <label for="username" class="form-label">Usuário:</label>
+                <div class="input-group">
+                    <span class="input-group-icon"><i class="fas fa-user"></i></span>
+                    <input type="text" id="username" name="username" class="form-control" required placeholder="Seu usuário">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="password" class="form-label">Senha:</label>
+                <div class="input-group">
+                    <span class="input-group-icon"><i class="fas fa-lock"></i></span>
+                    <input type="password" id="password" name="password" class="form-control" required placeholder="Sua senha">
+                </div>
+            </div>
+            {# Opcional: Links como "Esqueci minha senha" ou "Lembrar-me"
+            <div class="form-group form-options">
+                <label class="remember-me"><input type="checkbox" name="remember"> Lembrar-me</label>
+                <a href="#" class="forgot-password-link">Esqueci minha senha</a>
+            </div>
+            #}
+            <div class="form-group">
+                <button type="submit" class="btn btn-primary btn-block btn-login">Entrar</button>
+            </div>
+        </form>
+        {# Opcional: Link para registro, se aplicável
+        <div class="login-footer-text">
+            Não tem uma conta? <a href="#">Registre-se</a>
         </div>
-        <div class="form-group">
-            <label for="password" class="form-label">Senha:</label>
-            <input type="password" id="password" name="password" class="form-control" required>
-        </div>
-        <div class="form-group">
-            <button type="submit" class="btn btn-login">Entrar</button>
-        </div>
-    </form>
+        #}
+    </div>
 </div>
 {% endblock %}

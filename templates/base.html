@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Associados Futebol Clube</title>
+    <title>Futebol Clube</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
@@ -19,17 +19,19 @@
                 <span class="hamburger-line"></span>
                 <span class="hamburger-line"></span>
             </button>
-            <h1>ASSOCIADOS FUTEBOL CLUBE</h1>
+            <h2>ASSOCIADOS FUTEBOL CLUBE</h2>
         </div>
     </header>
 
     <nav id="sidebarNav">
         <a href="{{ url_for('associados') }}"><i class="fas fa-users fa-fw"></i> Associados</a>
         <a href="{{ url_for('convidados') }}"><i class="fas fa-user-tie fa-fw"></i> Convidados</a>
+        <a href="{{ url_for('public_caixa') }}"><i class="fas fa-cash-register fa-fw"></i> Caixa do Grupo</a>
         {% if current_user.is_authenticated %}
             <a href="{{ url_for('adicionar') }}"><i class="fas fa-plus-circle fa-fw"></i> Adicionar</a>
-        <a href="{{ url_for('lista_associados_para_historico') }}"><i class="fas fa-file-invoice-dollar fa-fw"></i> Pagamentos Associados</a>
-        <a href="{{ url_for('lista_convidados_para_historico_jogos') }}"><i class="fas fa-calendar-check fa-fw"></i> Jogos e Taxas Convidados</a>
+            <a href="{{ url_for('admin_caixa') }}"><i class="fas fa-edit fa-fw"></i> Gerenciar Caixa</a>
+        <a href="{{ url_for('lista_associados_para_historico') }}"><i class="fas fa-file-invoice-dollar fa-fw"></i> Pagamentos</a>
+        <a href="{{ url_for('lista_convidados_para_historico_jogos') }}"><i class="fas fa-calendar-check fa-fw"></i> Jogos e Convidados</a>
             <a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt fa-fw"></i> Logout ({{ current_user.username }})</a>
         {% else %}
             <a href="{{ url_for('login') }}"><i class="fas fa-sign-in-alt fa-fw"></i> Login Admin</a>
@@ -48,16 +50,21 @@
     </main>
 
     <script>
-        // JavaScript para o toggle da sidebar
         const menuToggleButton = document.getElementById('menuToggleButton');
         const sidebarNav = document.getElementById('sidebarNav');
+        const mainElement = document.querySelector('main.container'); // Seleciona o elemento <main class="container">
 
         menuToggleButton.addEventListener('click', () => {
             const isExpanded = menuToggleButton.getAttribute('aria-expanded') === 'true' || false;
-            menuToggleButton.setAttribute('aria-expanded', !isExpanded);
+            menuToggleButton.setAttribute('aria-expanded', String(!isExpanded)); // Converte para string
             sidebarNav.classList.toggle('open');
-            // Opcional: Adicionar uma classe ao body para, por exemplo, escurecer o main content
-            // document.body.classList.toggle('sidebar-open-overlay');
+
+            // Adiciona ou remove a classe para empurrar o conteúdo principal
+            if (sidebarNav.classList.contains('open')) {
+                if(mainElement) mainElement.classList.add('main-content-pushed');
+            } else {
+                if(mainElement) mainElement.classList.remove('main-content-pushed');
+            }
         });
     </script>
 

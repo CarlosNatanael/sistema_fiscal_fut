@@ -43,10 +43,12 @@
                                 <option value="NA" {% if item_historico.status == 'NA' %}selected{% endif %}>NA</option>
                             </select>
                             
-                            <div class="date-input-wrapper" id="date_field_container_{{ form_id_suffix }}" style="display: {% if item_historico.status == 'OK' %}inline-block{% else %}none{% endif %};">
-                                <input type="date" name="data_pagamento_input" id="data_pagamento_input_{{ form_id_suffix }}" 
-                                       class="form-control form-control-sm date-input"
-                                       value="{{ item_historico.data_pagamento_input_value if item_historico.data_pagamento_input_value and item_historico.status == 'OK' else '' }}">
+                            <div class="input-valor-wrapper" id="valor_field_container_{{ form_id_suffix }}" style="display: {% if item_historico.status == 'OK' %}flex{% else %}none{% endif %}; margin-top: 5px;">
+                                <label for="valor_pago_{{ form_id_suffix }}" class="form-label-sm">Valor Pago (R$):</label>
+                                <input type="number" step="0.01" name="valor_pago" id="valor_pago_{{ form_id_suffix }}"
+                                       class="form-control form-control-sm"
+                                       value="{{ (pagamentos_dict.get(item_historico.mes_yyyymm).valor if pagamentos_dict.get(item_historico.mes_yyyymm) and pagamentos_dict.get(item_historico.mes_yyyymm).valor is not none else '') if item_historico.status == 'OK' else '' }}"
+                                       placeholder="Ex: 50.00">
                             </div>
                             
                             <button type="submit" class="btn btn-sm btn-primary btn-update-payment">Atualizar</button>
@@ -95,44 +97,4 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
-
-<style>
-/* Estilos para o formulário de pagamento na tabela (mova para style.css se preferir) */
-/* Estilos para o formulário de pagamento inline na tabela de histórico */
-.payment-form-inline {
-    display: flex;
-    flex-wrap: nowrap; /* Tenta manter tudo na mesma linha */
-    align-items: center; /* Alinha verticalmente os itens */
-    gap: 5px; /* Espaço entre os elementos */
-    min-width: 300px; /* Dá um espaço mínimo para os controles não quebrarem muito cedo */
-}
-
-.payment-form-inline .select-status {
-    min-width: 100px; /* Largura mínima para o select */
-    /* flex-grow: 1; Pode ser removido ou ajustado se os inputs ficarem muito grandes */
-}
-
-.payment-form-inline .date-input-wrapper {
-    /* O display é controlado por JS (inline-block or none) */
-}
-
-.payment-form-inline .date-input {
-    min-width: 130px; /* Largura para o campo de data */
-    padding: .25rem .3rem; /* Ajuste fino no padding do input de data */
-}
-
-.payment-form-inline .btn-update-payment {
-    white-space: nowrap; /* Para o texto "Atualizar" não quebrar */
-    padding: .25rem .5rem; /* Consistente com form-control-sm */
-}
-
-/* Seus estilos existentes para .form-control-sm devem ser aplicados */
-.form-control-sm {
-    padding: .25rem .5rem; 
-    font-size: .875rem; 
-    line-height: 1.5; 
-    border-radius: .2rem;
-    /* Remove height: auto; se existir, para melhor controle com padding */
-}
-</style>
 {% endblock %}

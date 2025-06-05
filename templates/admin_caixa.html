@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="form-container">
+    <h2>Gestão do Caixa (Admin)</h2>
+
+    {% include "_flash_messages.html" %} {# Supondo que você tem um template para flash messages #}
+
+    <div class="caixa-summary section-mb">
+        <h3>Saldo Atual: <span style="color: {{ 'green' if saldo_atual >= 0 else 'red' }};">R$ {{ "%.2f"|format(saldo_atual) }}</span></h3>
+    </div>
+    <hr class="section-mb">
+
+    <h4>Registrar Nova Transação</h4>
+    <form method="POST" action="{{ url_for('admin_caixa') }}" class="mb-4">
+        <div class="form-row">
+            <div class="form-group col-md-4">
+                <label for="data_transacao" class="form-label">Data:</label>
+                <input type="date" name="data_transacao" id="data_transacao" class="form-control form-control-sm" value="{{ today_date_for_input }}" required>
+            </div>
+            <div class="form-group col-md-4">
+                <label for="tipo_transacao" class="form-label">Tipo:</label>
+                <select name="tipo_transacao" id="tipo_transacao" class="form-control form-control-sm">
+                    <option value="saida">Saída (Despesa)</option>
+                    <option value="entrada">Entrada (Outra Receita)</option>
+                </select>
+            </div>
+            <div class="form-group col-md-4">
+                <label for="valor" class="form-label">Valor (R$):</label>
+                <input type="number" step="0.01" min="0.01" name="valor" id="valor" class="form-control form-control-sm" required placeholder="Ex: 50.00">
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="descricao" class="form-label">Descrição:</label>
+            <input type="text" name="descricao" id="descricao" class="form-control form-control-sm" required placeholder="Ex: Aluguel do campo, Compra de bolas">
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">Registrar Transação</button>
+    </form>
+    <hr>
+
+    <h4>Histórico de Todas as Transações</h4>
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Descrição</th>
+                    <th>Tipo</th>
+                    <th>Valor (R$)</th>
+                    <th>Link Pag.</th> {# Opcional: Link para o pagamento do associado #}
+                </tr>
+            </thead>
+            <tbody>
+                {% for transacao in transacoes %}
+                <tr>
+                    <td>{{ transacao.data.strftime('%d/%m/%Y %H:%M') if transacao.data else '-' }}</td>
+                    <td>{{ transacao.descricao }}</td>
+                    <td><span class="badge bg-{{ 'success' if transacao.tipo == 'entrada' else 'danger' }}">{{ transacao.tipo|capitalize }}</span></td>
+                    <td>{{ "%.2f"|format(transacao.valor) }}</td>
+                    <td>
+                        {% if transacao.pagamento_id %}
+                            <a href="{{ url_for('historico_pagamentos_associado', associado_id=transacao.pagamento.associado_id) }}#mes_{{transacao.pagamento.mes}}" title="Ver Pagamento Original">
+                                ID Pag: {{ transacao.pagamento_id }}
+                            </a>
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5">Nenhuma transação registrada.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{# Adicione estilos para .form-row, .col-md-4, .mb-4, .badge, .bg-success, .bg-danger se não estiver usando Bootstrap completo #}
+<style>
+    .section-mb { margin-bottom: 1.5rem; }
+    .caixa-summary p { font-size: 1.2rem; margin-bottom: 0.5rem; }
+    .caixa-summary h3 span { font-weight: bold; }
+
+    .form-row { display: flex; flex-wrap: wrap; margin-right: -5px; margin-left: -5px; }
+    .form-row > [class*="col-"] { position: relative; width: 100%; padding-right: 5px; padding-left: 5px; margin-bottom:10px; }
+    @media (min-width: 768px) { /* md */
+        .form-row > .col-md-4 { flex: 0 0 33.333333%; max-width: 33.333333%; }
+    }
+    .mb-4 { margin-bottom: 1.5rem !important; }
+
+    .badge { display: inline-block; padding: .35em .65em; font-size: .75em; font-weight: 700; line-height: 1; color: #fff; text-align: center; white-space: nowrap; vertical-align: baseline; border-radius: .25rem; }
+    .bg-success { background-color: #198754 !important; } /* Verde para entrada */
+    .bg-danger { background-color: #dc3545 !important; } /* Vermelho para saída */
+</style>
+<script>
+    // Seta o valor padrão do input de data da transação para hoje
+    document.addEventListener('DOMContentLoaded', function() {
+        const dataTransacaoInput = document.getElementById('data_transacao');
+        if (dataTransacaoInput && !dataTransacaoInput.value) { // Só preenche se estiver vazio
+            // O valor já está sendo passado pelo python como today_date_for_input
+            // Se não estivesse, faríamos:
+            // const today = new Date();
+            // dataTransacaoInput.value = today.toISOString().split('T')[0];
+        }
+    });
+</script>
+{% endblock %}

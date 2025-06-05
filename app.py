@@ -28,6 +28,7 @@ login_manager.login_view = 'login' # Rota para onde usuários não logados são 
 login_manager.login_message = "Você precisa estar logado para acessar esta página."
 login_manager.login_message_category = "info" # Categoria para flash messages (opcional)
 
+# ========= Classes ====================
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
@@ -54,9 +55,10 @@ class Convidado(db.Model):
 class Pagamento(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     associado_id = db.Column(db.Integer, db.ForeignKey('associado.id'))
-    mes = db.Column(db.String(7))
-    data_pagamento = db.Column(db.DateTime)
-    status = db.Column(db.String(20))
+    mes = db.Column(db.String(7))  # Formato YYYY-MM
+    data_pagamento = db.Column(db.DateTime) # Data em que o pagamento foi feito
+    status = db.Column(db.String(20))  # OK, Pendente, NA
+    valor = db.Column(db.Float, nullable=True) # VALOR PAGO - importante para o caixa
 
 class Presenca(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -73,6 +75,19 @@ class PagamentoJogoConvidado(db.Model):
 
     presenca = db.relationship('Presenca', backref=db.backref('pagamento_info', uselist=False))
 
+class TransacaoCaixa(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    data = db.Column(db.DateTime, nullable=False, default=datetime.utcnow) # Data da transação
+    descricao = db.Column(db.String(200), nullable=False)
+    tipo = db.Column(db.String(10), nullable=False) 
+    valor = db.Column(db.Float, nullable=False) 
+    pagamento_id = db.Column(db.Integer, db.ForeignKey('pagamento.id'), nullable=True)
+    pagamento = db.relationship('Pagamento', backref=db.backref('transacao_caixa', uselist=False))
+
+    def __repr__(self):
+        return f"<TransacaoCaixa {self.id} [{self.tipo}] {self.descricao} - R${self.valor:.2f}>"
+
+# ========== Login ================
 @app.route('/logout')
 @login_required
 def logout():
@@ -105,6 +120,104 @@ def login():
 def index():
     return redirect(url_for('associados'))
 
+# ================= Caixa grupo ==============
+@app.route('/caixa')
+def public_caixa():
+    hoje = datetime.now()
+    mes_atual_para_caixa = hoje.strftime('%Y-%m')
+
+    pagamentos_mes_atual = Pagamento.query.filter(
+        Pagamento.mes == mes_atual_para_caixa,
+        Pagamento.status == 'OK',
+        Pagamento.valor != None
+    ).all()
+
+    total_arrecadado_mes_atual_associados = sum(p.valor for p in pagamentos_mes_atual if p.valor is not None) 
+
+    total_geral_mes_atual = total_arrecadado_mes_atual_associados
+
+    todos_pagamentos_ok = Pagamento.query.filter(Pagamento.status == 'OK', Pagamento.valor != None).order_by(Pagamento.mes.desc(), Pagamento.data_pagamento.desc()).all()
+
+    def format_mes_para_display(mes_yyyymm):
+        if mes_yyyymm:
+            try:
+                return datetime.strptime(mes_yyyymm, '%Y-%m').strftime('%m/%Y')
+            except ValueError:
+                return mes_yyyymm 
+        return ''
+
+    return render_template(
+        'caixa.html',
+        mes_atual_display=hoje.strftime('%m/%Y'),
+        total_arrecadado_mes_atual=total_geral_mes_atual,
+        pagamentos_recentes=pagamentos_mes_atual,
+        todos_pagamentos_historico=todos_pagamentos_ok,
+        format_mes_display=format_mes_para_display
+    )
+
+@app.route('/admin/caixa', methods=['GET', 'POST'])
+@login_required
+def admin_caixa():
+    if request.method == 'POST':
+        descricao = request.form.get('descricao')
+        valor_str = request.form.get('valor')
+        tipo_transacao = request.form.get('tipo_transacao', 'saida') # 'saida' ou 'entrada'
+        data_str = request.form.get('data_transacao') # Formato AAAA-MM-DD
+
+        if not all([descricao, valor_str, data_str]):
+            flash('Descrição, valor e data são obrigatórios para a transação.', 'danger')
+        else:
+            try:
+                valor = float(valor_str)
+                # A data da transação já vem como AAAA-MM-DD do input type="date"
+                data_transacao = datetime.strptime(data_str, '%Y-%m-%d').date() 
+                                   # ou .datetime() se quiser guardar hora, mas .date() é suficiente se o input é date
+
+                if valor <= 0: # Valor deve ser positivo, o 'tipo' define a operação
+                    flash('O valor da transação deve ser um número positivo.', 'danger')
+                else:
+                    nova_transacao = TransacaoCaixa(
+                        data=datetime.combine(data_transacao, datetime.min.time()), # Converte date para datetime se o campo do modelo for DateTime
+                        descricao=descricao,
+                        tipo=tipo_transacao,
+                        valor=valor
+                    )
+                    db.session.add(nova_transacao)
+                    db.session.commit()
+                    flash(f'Transação de "{tipo_transacao}" registrada com sucesso!', 'success')
+            except ValueError:
+                flash('Valor ou formato de data inválido.', 'danger')
+            except Exception as e:
+                db.session.rollback()
+                flash(f'Erro ao registrar transação: {str(e)}', 'danger')
+        return redirect(url_for('admin_caixa'))
+
+    # GET: Exibir histórico e saldo
+    transacoes = TransacaoCaixa.query.order_by(TransacaoCaixa.data.desc(), TransacaoCaixa.id.desc()).all()
+    
+    saldo_atual = 0.0
+    for t in transacoes:
+        if t.tipo == 'entrada':
+            saldo_atual += t.valor
+        elif t.tipo == 'saida':
+            saldo_atual -= t.valor
+            
+    return render_template('admin_caixa.html', 
+                           transacoes=transacoes, 
+                           saldo_atual=saldo_atual,
+                           today_date_for_input=date.today().strftime('%Y-%m-%d')) # Para o valor padrão do input de data
+
+def format_mes_para_display_filter(mes_yyyymm):
+    if mes_yyyymm:
+        try:
+            return datetime.strptime(mes_yyyymm, '%Y-%m').strftime('%m/%Y')
+        except ValueError:
+            return mes_yyyymm 
+    return ''
+app.jinja_env.filters['format_mes_display'] = format_mes_para_display_filter
+
+
+# ================= Associados ==============
 @app.route('/associados')
 def associados():
     hoje = datetime.now()
@@ -132,16 +245,13 @@ def lista_associados_para_historico():
 def historico_pagamentos_associado(associado_id):
     associado = Associado.query.get_or_404(associado_id)
     
-    # Gera uma lista de meses para exibição (ex: últimos 12 meses + próximos 6)
-    # Você pode ajustar este range conforme necessário
     meses_para_exibir = []
-    hoje = datetime.now().replace(day=1) # Começa do primeiro dia do mês atual
-    
-    # Meses passados (ex: 12 meses)
+    hoje = datetime.now().replace(day=1) 
+
     for i in range(12, 0, -1):
         meses_para_exibir.append((hoje - relativedelta(months=i)).strftime('%Y-%m'))
     
-    # Mês atual e próximos meses (ex: mês atual + 5 próximos = 6 meses)
+    # Mês atual e próximos meses
     for i in range(0, 6):
         meses_para_exibir.append((hoje + relativedelta(months=i)).strftime('%Y-%m'))
 
@@ -159,7 +269,6 @@ def historico_pagamentos_associado(associado_id):
 
         if pagamento and pagamento.data_pagamento:
             data_pagamento_para_display = pagamento.data_pagamento.strftime('%d/%m/%Y')
-            # O input type="date" espera o formato AAAA-MM-DD
             data_pagamento_para_input_value = pagamento.data_pagamento.strftime('%Y-%m-%d')
 
         historico_display.append({
@@ -167,7 +276,7 @@ def historico_pagamentos_associado(associado_id):
             'mes_display': mes_display,
             'status': pagamento.status if pagamento else 'Pendente',
             'data_pagamento_display': data_pagamento_para_display,
-            'data_pagamento_input_value': data_pagamento_para_input_value # Passa o valor formatado
+            'data_pagamento_input_value': data_pagamento_para_input_value
         })
             
     return render_template(
@@ -176,6 +285,7 @@ def historico_pagamentos_associado(associado_id):
         historico_display=historico_display
     )
 
+# ================= Convidados ==============
 @app.route('/convidados') #
 def convidados():
     convidados_query = Convidado.query.all() # Renomeei para evitar conflito com o nome da função, boa prática
@@ -251,6 +361,7 @@ def historico_jogos_convidado(convidado_id):
         historico_jogos=historico_para_template
     )
 
+# ======== Funções adicionais ============
 @app.route('/adicionar', methods=['GET', 'POST']) #
 @login_required
 def adicionar():
@@ -272,51 +383,108 @@ def adicionar():
     
     return render_template('adicionar.html')
 
+
+
 @app.route('/registrar_pagamento/<int:associado_id>', methods=['POST'])
 @login_required
 def registrar_pagamento(associado_id):
-    mes = request.form['mes']
+    mes = request.form['mes']  # Formato YYYY-MM
     status = request.form['status']
-    data_pagamento_str = request.form.get('data_pagamento_input') # Campo para data manual
+    data_pagamento_str = request.form.get('data_pagamento_input') # Formato YYYY-MM-DD
+    valor_pago_str = request.form.get('valor_pago')
 
-    print(f"DEBUG: Tentando registrar pagamento para Associado ID: {associado_id}, Mês: {mes}, Status: {status}, Data Pagamento Input: {data_pagamento_str}")
+    print(f"DEBUG: Registrar Pagamento - Associado ID: {associado_id}, Mês: {mes}, Status: {status}, Data Pag. Input: {data_pagamento_str}, Valor Pago Input: {valor_pago_str}")
 
     data_pagamento_obj = None
+    valor_pago_obj = None
+
     if status == 'OK':
-        if data_pagamento_str:
-            try:
-                data_pagamento_obj = datetime.strptime(data_pagamento_str, '%Y-%m-%d').date()
-            except ValueError:
-                flash(f'Formato de data de pagamento inválido: "{data_pagamento_str}". Use o formato AAAA-MM-DD.', 'danger')
-                return redirect(url_for('historico_pagamentos_associado', associado_id=associado_id))
-        else:
+        if not data_pagamento_str:
             flash('A data do pagamento é obrigatória quando o status é "OK".', 'danger')
             return redirect(url_for('historico_pagamentos_associado', associado_id=associado_id))
+        try:
+            data_pagamento_obj = datetime.strptime(data_pagamento_str, '%Y-%m-%d').date()
+        except ValueError:
+            flash(f'Formato de data de pagamento inválido: "{data_pagamento_str}". Use AAAA-MM-DD.', 'danger')
+            return redirect(url_for('historico_pagamentos_associado', associado_id=associado_id))
 
-    pagamento = Pagamento.query.filter_by(associado_id=associado_id, mes=mes).first()
+        if not valor_pago_str: # Se o valor é obrigatório para status OK
+            flash('O valor pago é obrigatório quando o status é "OK".', 'danger')
+            return redirect(url_for('historico_pagamentos_associado', associado_id=associado_id))
+        try:
+            valor_pago_obj = float(valor_pago_str)
+            if valor_pago_obj <= 0: # Pagamento OK deve ter valor positivo
+                flash('O valor pago deve ser positivo para o status "OK".', 'danger')
+                return redirect(url_for('historico_pagamentos_associado', associado_id=associado_id))
+        except ValueError:
+            flash(f'Valor pago inválido: "{valor_pago_str}". Use um número.', 'danger')
+            return redirect(url_for('historico_pagamentos_associado', associado_id=associado_id))
 
-    if pagamento:
-        print(f"DEBUG: Pagamento existente para Mês: {mes}. Atualizando.")
-        pagamento.status = status
-        pagamento.data_pagamento = data_pagamento_obj 
-    else:
+    # Encontra ou cria o objeto Pagamento
+    pagamento_obj = Pagamento.query.filter_by(associado_id=associado_id, mes=mes).first()
+
+    if not pagamento_obj:
         print(f"DEBUG: Novo pagamento para Mês: {mes}. Criando.")
-        pagamento = Pagamento(
+        pagamento_obj = Pagamento(
             associado_id=associado_id,
-            mes=mes,
-            status=status,
-            data_pagamento=data_pagamento_obj
+            mes=mes
         )
-        db.session.add(pagamento)
-    
+        db.session.add(pagamento_obj)
+    else:
+        print(f"DEBUG: Pagamento existente para Mês: {mes}. Atualizando.")
+
+    # Guarda o status anterior se o pagamento já existia e era OK, para possível remoção da transação
+    status_anterior_era_ok = pagamento_obj.id and pagamento_obj.status == 'OK'
+
+    # Atualiza os campos do Pagamento
+    pagamento_obj.status = status
+    pagamento_obj.data_pagamento = data_pagamento_obj # Será None se status não for OK ou data inválida (já tratado acima)
+    pagamento_obj.valor = valor_pago_obj           # Será None se status não for OK ou valor inválido (já tratado acima)
+
+    # Lógica para TransacaoCaixa
+    if status == 'OK' and valor_pago_obj is not None: # valor_pago_obj já foi validado como > 0
+        # Garante que o pagamento_obj tenha um ID para vincular (importante se for novo)
+        # Fazendo um flush para obter o ID se for um objeto novo.
+        try:
+            db.session.flush() # Para obter pagamento_obj.id se for uma nova instância
+        except Exception as e_flush: # Captura exceções do flush (ex: violação de constraint)
+            db.session.rollback()
+            flash(f'Erro ao preparar dados do pagamento: {str(e_flush)}', 'danger')
+            print(f"DEBUG: ERRO no flush do pagamento: {str(e_flush)}")
+            return redirect(url_for('historico_pagamentos_associado', associado_id=associado_id))
+
+
+        transacao_existente = TransacaoCaixa.query.filter_by(pagamento_id=pagamento_obj.id).first()
+        if transacao_existente:
+            print(f"DEBUG: Atualizando TransacaoCaixa existente ID {transacao_existente.id}")
+            transacao_existente.valor = valor_pago_obj
+            transacao_existente.data = datetime.combine(data_pagamento_obj, datetime.min.time()) if data_pagamento_obj else None
+            transacao_existente.descricao = f"Mensalidade {pagamento_obj.mes} - {pagamento_obj.associado.nome} (Valor/Data Atualizado)"
+        else:
+            print(f"DEBUG: Criando nova TransacaoCaixa para Pagamento ID {pagamento_obj.id}")
+            nova_transacao = TransacaoCaixa(
+                data=datetime.combine(data_pagamento_obj, datetime.min.time()) if data_pagamento_obj else datetime.utcnow(),
+                descricao=f"Mensalidade {pagamento_obj.mes} - {pagamento_obj.associado.nome}",
+                tipo='entrada',
+                valor=valor_pago_obj,
+                pagamento_id=pagamento_obj.id # Vincula pelo ID
+            )
+            db.session.add(nova_transacao)
+    elif status_anterior_era_ok and pagamento_obj.id:
+        # O status mudou de OK para não-OK, remove a transação de entrada se existia
+        transacao_a_remover = TransacaoCaixa.query.filter_by(pagamento_id=pagamento_obj.id, tipo='entrada').first()
+        if transacao_a_remover:
+            print(f"DEBUG: Removendo TransacaoCaixa ID {transacao_a_remover.id} pois o pagamento não é mais 'OK'.")
+            db.session.delete(transacao_a_remover)
+
     try:
         db.session.commit()
-        flash('Pagamento atualizado com sucesso!', 'success')
-        print(f"DEBUG: Pagamento COMITADO - Mês: {mes}, Status: {status}, Data Obj: {data_pagamento_obj}")
+        flash('Pagamento e transação do caixa atualizados com sucesso!', 'success')
+        print(f"DEBUG: Pagamento e TransacaoCaixa COMITADOS - Associado ID: {associado_id}, Mês: {mes}, Status: {status}")
     except Exception as e:
         db.session.rollback()
-        flash(f'Erro ao atualizar pagamento: {str(e)}', 'danger')
-        print(f"DEBUG: ERRO no commit do pagamento: {str(e)}")
+        flash(f'Erro ao salvar alterações: {str(e)}', 'danger')
+        print(f"DEBUG: ERRO no commit final: {str(e)}")
     
     return redirect(url_for('historico_pagamentos_associado', associado_id=associado_id))
 
@@ -418,5 +586,4 @@ if __name__ == '__main__':
             admin_user.set_password('admin123')
             db.session.add(admin_user)
             db.session.commit()
-            print("Usuário admin criado com senha 'admin123'.")
     app.run(host="0.0.0.0", port=5000, debug=True)

@@ -33,8 +33,6 @@
                     <a href="{{ url_for('editar_associado', associado_id=associado.id) }}" class="btn btn-sm btn-outline-primary">
                         <i class="fas fa-edit"></i> Editar Associado
                     </a>
-                    {# O botão/formulário para registrar pagamento do mês atual será movido ou repensado #}
-                    {# Poderíamos adicionar um link aqui para a página de histórico de pagamentos do associado #}
                     <a href="{{ url_for('historico_pagamentos_associado', associado_id=associado.id) }}" class="btn btn-sm btn-outline-info" style="margin-top: 5px;">
                         <i class="fas fa-history"></i> Histórico Pag.
                     </a>
@@ -50,38 +48,4 @@
         </tbody>
     </table>
 </div>
-<style>
-.btn-sm {
-    padding: 0.25rem 0.5rem;
-    font-size: .875rem;
-    line-height: 1.5;
-    border-radius: .2rem;
-}
-.btn-outline-primary {
-    color: #0056b3;
-    border-color: #0056b3;
-}
-.btn-outline-primary:hover {
-    color: #fff;
-    background-color: #0056b3;
-    border-color: #0056b3;
-}
-.btn-secondary.btn-block { /* Para o botão Cancelar */
-    display: block;
-    width: 100%;
-    padding: 10px 15px; /* Um pouco menor que o primário */
-    background-color: #6c757d;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    font-size: 1rem; /* Menor que o primário */
-    font-weight: 500;
-    cursor: pointer;
-    text-align: center;
-    transition: background-color 0.2s ease-in-out;
-}
-.btn-secondary.btn-block:hover {
-    background-color: #5a6268;
-}
-</style>
 {% endblock %}
