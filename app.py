@@ -5,6 +5,8 @@ from dateutil.relativedelta import relativedelta
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask import flash
 from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
 import os
 
 # Configuração do caminho do banco de dados
@@ -27,6 +29,16 @@ login_manager.init_app(app)
 login_manager.login_view = 'login' # Rota para onde usuários não logados são redirecionados
 login_manager.login_message = "Você precisa estar logado para acessar esta página."
 login_manager.login_message_category = "info" # Categoria para flash messages (opcional)
+
+@event.listens_for(Engine, "connect")
+def set_sqlite_timeout(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    try:
+        cursor.execute("PRAGMA busy_timeout = 5000") # Timeout de 5 segundos (5000 ms)
+        cursor.close()
+        print("DEBUG: SQLite busy_timeout configurado para 5000ms.")
+    except Exception as e:
+        print(f"DEBUG: Erro ao configurar SQLite busy_timeout: {e}")
 
 # ========= Classes ====================
 class User(UserMixin, db.Model):
@@ -245,44 +257,51 @@ def lista_associados_para_historico():
 def historico_pagamentos_associado(associado_id):
     associado = Associado.query.get_or_404(associado_id)
     
+    # ... (lógica para gerar meses_para_exibir) ...
     meses_para_exibir = []
     hoje = datetime.now().replace(day=1) 
-
-    for i in range(12, 0, -1):
-        meses_para_exibir.append((hoje - relativedelta(months=i)).strftime('%Y-%m'))
     
-    # Mês atual e próximos meses
-    for i in range(0, 6):
+    for i in range(12, 0, -1): # 12 meses passados
+        meses_para_exibir.append((hoje - relativedelta(months=i)).strftime('%Y-%m'))
+    for i in range(0, 6): # Mês atual + 5 próximos
         meses_para_exibir.append((hoje + relativedelta(months=i)).strftime('%Y-%m'))
+    # Remove duplicatas e ordena se necessário, embora a lógica acima deva gerar sequencialmente
+    meses_para_exibir = sorted(list(set(meses_para_exibir)))
 
-    # Busca todos os pagamentos do associado para otimizar
-    pagamentos_dict = {p.mes: p for p in associado.pagamentos}
 
-    # Prepara dados para o template
+    # Busca todos os pagamentos do associado de uma vez para otimizar
+    pagamentos_do_associado_dict = {p.mes: p for p in associado.pagamentos}
+
     historico_display = []
     for mes_yyyymm in meses_para_exibir:
-        pagamento = pagamentos_dict.get(mes_yyyymm)
+        pagamento = pagamentos_do_associado_dict.get(mes_yyyymm) # Usando o dict para pegar o pagamento
         mes_display = datetime.strptime(mes_yyyymm, '%Y-%m').strftime('%m/%Y')
         
         data_pagamento_para_display = None
-        data_pagamento_para_input_value = None # Para o value="" do input date
+        data_pagamento_para_input_value = None
+        valor_atual_do_pagamento = None # Para armazenar o valor do pagamento
 
-        if pagamento and pagamento.data_pagamento:
-            data_pagamento_para_display = pagamento.data_pagamento.strftime('%d/%m/%Y')
-            data_pagamento_para_input_value = pagamento.data_pagamento.strftime('%Y-%m-%d')
+        if pagamento: # Se existe um objeto pagamento para este mês
+            if pagamento.data_pagamento:
+                data_pagamento_para_display = pagamento.data_pagamento.strftime('%d/%m/%Y')
+                data_pagamento_para_input_value = pagamento.data_pagamento.strftime('%Y-%m-%d')
+            if pagamento.valor is not None: # Verifica se o pagamento tem um valor
+                valor_atual_do_pagamento = pagamento.valor
 
         historico_display.append({
             'mes_yyyymm': mes_yyyymm,
             'mes_display': mes_display,
             'status': pagamento.status if pagamento else 'Pendente',
             'data_pagamento_display': data_pagamento_para_display,
-            'data_pagamento_input_value': data_pagamento_para_input_value
+            'data_pagamento_input_value': data_pagamento_para_input_value,
+            'valor_pago_atual': valor_atual_do_pagamento # ADICIONA O VALOR AQUI
         })
             
     return render_template(
         'historico_pagamentos_associado.html',
         associado=associado,
         historico_display=historico_display
+        # Note que pagamentos_dict NÃO está sendo passado para o template aqui
     )
 
 # ================= Convidados ==============
@@ -388,17 +407,27 @@ def adicionar():
 @app.route('/registrar_pagamento/<int:associado_id>', methods=['POST'])
 @login_required
 def registrar_pagamento(associado_id):
-    mes = request.form['mes']  # Formato YYYY-MM
-    status = request.form['status']
-    data_pagamento_str = request.form.get('data_pagamento_input') # Formato YYYY-MM-DD
-    valor_pago_str = request.form.get('valor_pago')
+    # Busca o objeto Associado no início para ter acesso ao nome
+    associado_info = Associado.query.get(associado_id)
+    if not associado_info:
+        flash(f'Associado com ID {associado_id} não encontrado.', 'danger')
+        return redirect(url_for('lista_associados_para_historico')) # Ou outra rota apropriada
 
-    print(f"DEBUG: Registrar Pagamento - Associado ID: {associado_id}, Mês: {mes}, Status: {status}, Data Pag. Input: {data_pagamento_str}, Valor Pago Input: {valor_pago_str}")
+    mes = request.form['mes']
+    status = request.form['status']
+    data_pagamento_str = request.form.get('data_pagamento_input')
+    valor_pago_str = request.form.get('valor_pago')
+    if valor_pago_str is not None:
+        valor_pago_str = valor_pago_str.strip()
+
+    print(f"DEBUG: Registrar Pagamento - Associado: {associado_info.nome} (ID: {associado_id}), Mês: {mes}, Status: {status}, Data Pag. Input: {data_pagamento_str}, Valor Pago Input: '{valor_pago_str}'")
 
     data_pagamento_obj = None
     valor_pago_obj = None
 
     if status == 'OK':
+        # ... (sua lógica de validação para data_pagamento_obj e valor_pago_obj) ...
+        # MANTENHA A VALIDAÇÃO QUE VOCÊ TINHA AQUI
         if not data_pagamento_str:
             flash('A data do pagamento é obrigatória quando o status é "OK".', 'danger')
             return redirect(url_for('historico_pagamentos_associado', associado_id=associado_id))
@@ -408,70 +437,77 @@ def registrar_pagamento(associado_id):
             flash(f'Formato de data de pagamento inválido: "{data_pagamento_str}". Use AAAA-MM-DD.', 'danger')
             return redirect(url_for('historico_pagamentos_associado', associado_id=associado_id))
 
-        if not valor_pago_str: # Se o valor é obrigatório para status OK
+        if not valor_pago_str:
             flash('O valor pago é obrigatório quando o status é "OK".', 'danger')
             return redirect(url_for('historico_pagamentos_associado', associado_id=associado_id))
         try:
             valor_pago_obj = float(valor_pago_str)
-            if valor_pago_obj <= 0: # Pagamento OK deve ter valor positivo
+            if valor_pago_obj <= 0:
                 flash('O valor pago deve ser positivo para o status "OK".', 'danger')
                 return redirect(url_for('historico_pagamentos_associado', associado_id=associado_id))
         except ValueError:
             flash(f'Valor pago inválido: "{valor_pago_str}". Use um número.', 'danger')
             return redirect(url_for('historico_pagamentos_associado', associado_id=associado_id))
-
-    # Encontra ou cria o objeto Pagamento
+    
     pagamento_obj = Pagamento.query.filter_by(associado_id=associado_id, mes=mes).first()
+    status_anterior_era_ok = False
+    # pagamento_id_para_transacao = None # Removido pois pagamento_obj.id é usado diretamente após o flush
 
     if not pagamento_obj:
         print(f"DEBUG: Novo pagamento para Mês: {mes}. Criando.")
-        pagamento_obj = Pagamento(
-            associado_id=associado_id,
-            mes=mes
-        )
+        pagamento_obj = Pagamento(associado_id=associado_id, mes=mes)
         db.session.add(pagamento_obj)
     else:
-        print(f"DEBUG: Pagamento existente para Mês: {mes}. Atualizando.")
+        print(f"DEBUG: Pagamento existente para Mês: {mes}. ID: {pagamento_obj.id}. Atualizando.")
+        status_anterior_era_ok = pagamento_obj.status == 'OK'
+        # pagamento_id_para_transacao = pagamento_obj.id
 
-    # Guarda o status anterior se o pagamento já existia e era OK, para possível remoção da transação
-    status_anterior_era_ok = pagamento_obj.id and pagamento_obj.status == 'OK'
-
-    # Atualiza os campos do Pagamento
     pagamento_obj.status = status
-    pagamento_obj.data_pagamento = data_pagamento_obj # Será None se status não for OK ou data inválida (já tratado acima)
-    pagamento_obj.valor = valor_pago_obj           # Será None se status não for OK ou valor inválido (já tratado acima)
+    pagamento_obj.data_pagamento = data_pagamento_obj # Este deve ser um objeto datetime, não date, se o modelo for DateTime
+                                                     # Se Pagamento.data_pagamento for db.Date, então .date() está ok.
+                                                     # Assumindo Pagamento.data_pagamento = db.Column(db.DateTime)
+    if data_pagamento_obj: # data_pagamento_obj é um objeto date
+        pagamento_obj.data_pagamento = datetime.combine(data_pagamento_obj, datetime.min.time())
+    else:
+        pagamento_obj.data_pagamento = None
+
+    pagamento_obj.valor = valor_pago_obj
+
+    # Flush para obter o ID do pagamento_obj se for novo, antes de criar TransacaoCaixa
+    try:
+        db.session.flush()
+    except Exception as e_flush:
+        db.session.rollback()
+        flash(f'Erro ao preparar dados do pagamento: {str(e_flush)}', 'danger')
+        print(f"DEBUG: ERRO no flush do pagamento (antes da transação): {str(e_flush)}")
+        return redirect(url_for('historico_pagamentos_associado', associado_id=associado_id))
 
     # Lógica para TransacaoCaixa
-    if status == 'OK' and valor_pago_obj is not None: # valor_pago_obj já foi validado como > 0
-        # Garante que o pagamento_obj tenha um ID para vincular (importante se for novo)
-        # Fazendo um flush para obter o ID se for um objeto novo.
-        try:
-            db.session.flush() # Para obter pagamento_obj.id se for uma nova instância
-        except Exception as e_flush: # Captura exceções do flush (ex: violação de constraint)
-            db.session.rollback()
-            flash(f'Erro ao preparar dados do pagamento: {str(e_flush)}', 'danger')
-            print(f"DEBUG: ERRO no flush do pagamento: {str(e_flush)}")
-            return redirect(url_for('historico_pagamentos_associado', associado_id=associado_id))
+    if status == 'OK' and valor_pago_obj is not None:
+        if pagamento_obj.id: # Garante que temos um ID para o pagamento
+            transacao_existente = TransacaoCaixa.query.filter_by(pagamento_id=pagamento_obj.id).first()
+            
+            # Usa associado_info.nome que foi buscado no início
+            descricao_transacao = f"Mensalidade {pagamento_obj.mes} - {associado_info.nome}"
 
-
-        transacao_existente = TransacaoCaixa.query.filter_by(pagamento_id=pagamento_obj.id).first()
-        if transacao_existente:
-            print(f"DEBUG: Atualizando TransacaoCaixa existente ID {transacao_existente.id}")
-            transacao_existente.valor = valor_pago_obj
-            transacao_existente.data = datetime.combine(data_pagamento_obj, datetime.min.time()) if data_pagamento_obj else None
-            transacao_existente.descricao = f"Mensalidade {pagamento_obj.mes} - {pagamento_obj.associado.nome} (Valor/Data Atualizado)"
-        else:
-            print(f"DEBUG: Criando nova TransacaoCaixa para Pagamento ID {pagamento_obj.id}")
-            nova_transacao = TransacaoCaixa(
-                data=datetime.combine(data_pagamento_obj, datetime.min.time()) if data_pagamento_obj else datetime.utcnow(),
-                descricao=f"Mensalidade {pagamento_obj.mes} - {pagamento_obj.associado.nome}",
-                tipo='entrada',
-                valor=valor_pago_obj,
-                pagamento_id=pagamento_obj.id # Vincula pelo ID
-            )
-            db.session.add(nova_transacao)
-    elif status_anterior_era_ok and pagamento_obj.id:
-        # O status mudou de OK para não-OK, remove a transação de entrada se existia
+            if transacao_existente:
+                print(f"DEBUG: Atualizando TransacaoCaixa existente ID {transacao_existente.id}")
+                if transacao_existente.valor != valor_pago_obj or \
+                   (pagamento_obj.data_pagamento and transacao_existente.data != pagamento_obj.data_pagamento):
+                    transacao_existente.valor = valor_pago_obj
+                    transacao_existente.data = pagamento_obj.data_pagamento # Já é datetime
+                    transacao_existente.descricao = f"{descricao_transacao} (Valor/Data Atualizado)"
+            else:
+                print(f"DEBUG: Criando nova TransacaoCaixa para Pagamento ID {pagamento_obj.id}")
+                nova_transacao = TransacaoCaixa(
+                    data=pagamento_obj.data_pagamento if pagamento_obj.data_pagamento else datetime.utcnow(),
+                    descricao=descricao_transacao,
+                    tipo='entrada',
+                    valor=valor_pago_obj,
+                    pagamento_id=pagamento_obj.id
+                )
+                db.session.add(nova_transacao)
+    elif status_anterior_era_ok and status != 'OK' and pagamento_obj.id:
         transacao_a_remover = TransacaoCaixa.query.filter_by(pagamento_id=pagamento_obj.id, tipo='entrada').first()
         if transacao_a_remover:
             print(f"DEBUG: Removendo TransacaoCaixa ID {transacao_a_remover.id} pois o pagamento não é mais 'OK'.")
@@ -479,7 +515,7 @@ def registrar_pagamento(associado_id):
 
     try:
         db.session.commit()
-        flash('Pagamento e transação do caixa atualizados com sucesso!', 'success')
+        flash('Pagamento e/ou transação do caixa atualizados com sucesso!', 'success')
         print(f"DEBUG: Pagamento e TransacaoCaixa COMITADOS - Associado ID: {associado_id}, Mês: {mes}, Status: {status}")
     except Exception as e:
         db.session.rollback()

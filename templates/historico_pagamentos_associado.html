@@ -47,8 +47,14 @@
                                 <label for="valor_pago_{{ form_id_suffix }}" class="form-label-sm">Valor Pago (R$):</label>
                                 <input type="number" step="0.01" name="valor_pago" id="valor_pago_{{ form_id_suffix }}"
                                        class="form-control form-control-sm"
-                                       value="{{ (pagamentos_dict.get(item_historico.mes_yyyymm).valor if pagamentos_dict.get(item_historico.mes_yyyymm) and pagamentos_dict.get(item_historico.mes_yyyymm).valor is not none else '') if item_historico.status == 'OK' else '' }}"
+                                       value="{{ item_historico.valor_pago_atual if item_historico.valor_pago_atual is not none and item_historico.status == 'OK' else '' }}"
                                        placeholder="Ex: 50.00">
+                            </div>
+                            <div class="form-row-bottom" id="date_field_container_{{ form_id_suffix }}" style="display: {% if item_historico.status == 'OK' %}flex{% else %}none{% endif %};">
+                                <label for="data_pagamento_input_{{ form_id_suffix }}" class="form-label-sm">Data Pag.:</label>
+                                <input type="date" name="data_pagamento_input" id="data_pagamento_input_{{ form_id_suffix }}" 
+                                       class="form-control form-control-sm date-input"
+                                       value="{{ item_historico.data_pagamento_input_value if item_historico.data_pagamento_input_value and item_historico.status == 'OK' else '' }}">
                             </div>
                             
                             <button type="submit" class="btn btn-sm btn-primary btn-update-payment">Atualizar</button>
@@ -69,29 +75,62 @@
 <script>
 function togglePaymentDateField(suffix) {
     const statusSelect = document.getElementById('status_' + suffix);
-    const dateFieldContainer = document.getElementById('date_field_container_' + suffix); // Este é o date-input-wrapper
+    const dateFieldContainer = document.getElementById('date_field_container_' + suffix);
     const dateInput = document.getElementById('data_pagamento_input_' + suffix);
 
+    // Para o campo de valor, caso a lógica precise ser integrada aqui também
+    const valorFieldContainer = document.getElementById('valor_field_container_' + suffix);
+    const valorInput = document.getElementById('valor_pago_' + suffix);
+
+    if (!statusSelect || !dateFieldContainer || !dateInput || !valorFieldContainer || !valorInput) {
+        console.error("Um ou mais elementos do formulário não foram encontrados para o suffix:", suffix);
+        return; // Aborta se algum elemento essencial não for encontrado
+    }
+
     if (statusSelect.value === 'OK') {
-        dateFieldContainer.style.display = 'inline-block'; // Ou 'block' se preferir que ele tenha sua própria linha mas ainda seja compacto
+        // Lógica para o campo de Data
+        dateFieldContainer.style.display = 'flex'; // Ou 'block', dependendo do seu CSS para .form-row-bottom
         dateInput.required = true;
-        if (!dateInput.value) {
+        if (!dateInput.value) { // Só preenche se o campo de data estiver VAZIO
             const today = new Date();
-            dateInput.value = today.toISOString().split('T')[0];
+            // Verifica se 'today' é um objeto Date válido e se toISOString existe
+            if (today && typeof today.toISOString === 'function') {
+                dateInput.value = today.toISOString().split('T')[0]; // Formato AAAA-MM-DD
+                console.log("Data preenchida para AAAA-MM-DD:", dateInput.value);
+            } else {
+                console.error("Não foi possível gerar a data atual para preenchimento.");
+            }
         }
-    } else {
+
+        // Lógica para o campo de Valor (conforme discutido para o erro anterior)
+        valorFieldContainer.style.display = 'flex'; // Ou 'block'
+        valorInput.required = true;
+        // Se quiser preencher um valor padrão para 'valor_pago' se estiver vazio:
+        if (!valorInput.value) {
+            valorInput.value = '50.00'; // Exemplo
+        }
+
+    } else { // Se o status NÃO for 'OK'
+        // Lógica para o campo de Data
         dateFieldContainer.style.display = 'none';
         dateInput.required = false;
-        dateInput.value = ''; 
+        // dateInput.value = ''; // Não limpar automaticamente se já houver um valor salvo e o usuário só mudou o status temporariamente?
+                             // Ou limpar se a intenção é resetar. Por agora, vamos manter o valor se já existir.
+
+        // Lógica para o campo de Valor
+        valorFieldContainer.style.display = 'none';
+        valorInput.required = false;
+        // valorInput.value = ''; // Mesma consideração para limpar ou não.
     }
 }
 
-// Inicializa o estado dos campos de data para todos os formulários ao carregar a página
+// Inicializa o estado dos campos de data e valor para todos os formulários ao carregar a página
 document.addEventListener('DOMContentLoaded', function() {
-    const allStatusSelects = document.querySelectorAll('.select-status');
+    const allStatusSelects = document.querySelectorAll('.select-status'); // Certifique-se que seu select tem a classe 'select-status'
     allStatusSelects.forEach(selectElement => {
-        if (selectElement.id) {
+        if (selectElement.id && selectElement.id.startsWith('status_')) {
             const suffix = selectElement.id.replace('status_', '');
+            // Chama a função para configurar o estado inicial dos campos de data e valor
             togglePaymentDateField(suffix);
         }
     });
