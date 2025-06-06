@@ -4,14 +4,7 @@
 <div class="form-container">
     <h2>Histórico de Jogos e Pagamentos para: {{ convidado.nome }}</h2>
     <p><a href="{{ url_for('lista_convidados_para_historico_jogos') }}" class="btn btn-sm btn-outline-secondary">&laquo; Voltar para Lista de Convidados</a></p>
-    
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          <div class="alert alert-{{ category }}">{{ message }}</div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
+
 
     <div class="table-responsive">
         <table>

@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="form-container" style="max-width: 700px;"> {# Um container um pouco mais largo #}
+    <h2 class="text-center mb-4">Caixa do Grupo</h2>
+    <p class="text-center text-muted">Resumo financeiro disponível para consulta de todos os membros.</p>
+
+    <div class="caixa-card">
+        <h3>Saldo Total em Caixa</h3>
+        <p class="saldo-total saldo-{{ 'positivo' if saldo_total >= 0 else 'negativo' }}">
+            R$ {{ "%.2f"|format(saldo_total) }}
+        </p>
+    </div>
+
+    <div class="caixa-card">
+        <h4>Resumo do Mês Atual ({{ mes_atual_display }})</h4>
+        <div class="movimentacao-mes">
+            <p>
+                <strong>Total de Entradas:</strong>
+                <span class="valor-entrada">+ R$ {{ "%.2f"|format(total_entradas_mes) }}</span>
+            </p>
+            <p>
+                <strong>Total de Saídas:</strong>
+                <span class="valor-saida">- R$ {{ "%.2f"|format(total_saidas_mes) }}</span>
+            </p>
+        </div>
+    </div>
+        <div class="caixa-card pix-payment-card">
+        <h4>Pagar Mensalidade com PIX</h4>
+        <p>Use o aplicativo do seu banco para pagar a mensalidade. Clique no botão para copiar a chave PIX do tesoureiro.</p>
+        
+        <div class="pix-key-wrapper">
+            <code id="pixKey">jsilva.52jc@gmail.com</code>
+            <button class="btn btn-sm btn-primary" onclick="copyPixKey('pixKey')">
+                <i class="far fa-copy"></i> Copiar Chave
+            </button>
+        </div>
+        
+        <div class="copy-feedback-container">
+            <span id="copy-feedback" class="copy-feedback">Chave PIX copiada!</span>
+        </div>
+    </div>
+
+    {% if current_user.is_authenticated %}
+    <div style="text-align: center; margin-top: 2rem;">
+        <a href="{{ url_for('admin_caixa') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-edit"></i> Gerenciar Caixa (Visão do Admin)
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    function copyPixKey(elementId) {
+        const pixKeyElement = document.getElementById(elementId);
+        const feedbackElement = document.getElementById('copy-feedback');
+        
+        // Usa uma área de texto temporária para garantir a cópia em todos os navegadores/contextos
+        const tempTextArea = document.createElement('textarea');
+        tempTextArea.value = pixKeyElement.textContent.trim();
+        document.body.appendChild(tempTextArea);
+        tempTextArea.select();
+        
+        try {
+            document.execCommand('copy');
+            feedbackElement.classList.add('visible');
+            // Esconde a mensagem após 2 segundos
+            setTimeout(() => {
+                feedbackElement.classList.remove('visible');
+            }, 2000);
+        } catch (err) {
+            console.error('Falha ao copiar a chave PIX: ', err);
+            // Poderia mostrar uma mensagem de erro para o usuário aqui
+        }
+        
+        document.body.removeChild(tempTextArea);
+    }
+</script>
+
+{# Adicione estes estilos no seu style.css principal para um visual melhor #}
+<style>
+
+/* Idealmente, mova estes estilos para o seu arquivo style.css principal */
+    .pix-payment-card {
+        text-align: center; /* Centraliza o conteúdo do card de PIX */
+    }
+    .pix-key-wrapper {
+        display: flex;
+        align-items: center;
+        justify-content: space-between; /* Coloca espaço entre a chave e o botão */
+        gap: 15px; /* Espaço entre a chave e o botão */
+        background-color: #f8f9fa; /* Fundo suave para a área da chave */
+        padding: 10px 15px;
+        border-radius: 6px;
+        border: 1px solid #dee2e6;
+        margin-top: 1rem;
+    }
+    .pix-key-wrapper code {
+        font-family: 'Courier New', Courier, monospace; /* Fonte monoespaçada para a chave */
+        font-size: 1rem;
+        font-weight: 600;
+        color: #495057;
+        background-color: transparent; /* Remove fundo padrão do <code> */
+        padding: 5px;
+        word-break: break-all; /* Quebra chaves PIX muito longas (aleatórias) */
+        text-align: left; /* Alinha o texto da chave à esquerda */
+        flex-grow: 1; /* Faz a chave ocupar o espaço disponível */
+    }
+    .copy-feedback-container {
+        /* Container para a mensagem de feedback, para não afetar o layout quando ela aparece/desaparece */
+        height: 30px; 
+        margin-top: 5px;
+    }
+    .copy-feedback {
+        display: inline-block;
+        padding: 5px 12px;
+        background-color: #198754; /* Verde sucesso */
+        color: white;
+        border-radius: 20px; /* Bordas arredondadas (pílula) */
+        font-size: 0.85rem;
+        font-weight: 600;
+        opacity: 0; /* Começa invisível */
+        transition: opacity 0.3s ease-in-out;
+    }
+    .copy-feedback.visible {
+        opacity: 1; /* Fica visível quando a classe .visible é adicionada */
+    }
+
+    /* Estilos herdados de sua folha de estilo principal */
+    .caixa-card {
+        background-color: #fff;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 20px 25px;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+    .caixa-card h3, .caixa-card h4 {
+        margin-top: 0;
+        margin-bottom: 1rem;
+        color: #495057;
+        text-align: center;
+    }
+    .caixa-card {
+        background-color: #fff;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 20px 25px;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+    .caixa-card h3, .caixa-card h4 {
+        margin-top: 0;
+        margin-bottom: 1rem;
+        color: #495057;
+        text-align: center;
+    }
+    .saldo-total {
+        font-size: 2.5rem;
+        font-weight: 700; /* (bold do Roboto) */
+        text-align: center;
+        margin: 0;
+    }
+    .saldo-positivo {
+        color: #198754; /* Verde */
+    }
+    .saldo-negativo {
+        color: #dc3545; /* Vermelho */
+    }
+    .movimentacao-mes p {
+        display: flex;
+        justify-content: space-between;
+        font-size: 1.1rem;
+        margin-bottom: 0.5rem;
+        border-bottom: 1px solid #f1f1f1;
+        padding-bottom: 0.5rem;
+    }
+    .movimentacao-mes p:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+    .valor-entrada {
+        color: #198754;
+        font-weight: 600;
+    }
+    .valor-saida {
+        color: #dc3545;
+        font-weight: 600;
+    }
+    .text-center { text-align: center; }
+    .text-muted { color: #6c757d; }
+    .mb-4 { margin-bottom: 1.5rem !important; }
+</style>
+{% endblock %}

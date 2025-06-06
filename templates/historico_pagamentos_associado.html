@@ -5,13 +5,6 @@
     <h2>Histórico de Pagamentos para: {{ associado.nome }}</h2>
     <p><a href="{{ url_for('lista_associados_para_historico') }}" class="btn btn-sm btn-outline-secondary">&laquo; Voltar para Lista de Associados</a></p>
     
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          <div class="alert alert-{{ category }}">{{ message }}</div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
 
     <div class="table-responsive">
         <table>

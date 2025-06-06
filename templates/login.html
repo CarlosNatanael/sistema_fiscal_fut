@@ -7,15 +7,6 @@
         {# <div class="login-logo-container"><i class="fas fa-shield-alt fa-3x"></i></div> #}
         <h2>Login do Administrador</h2>
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            {% for category, message in messages %}
-              {# Integrar o alerta dentro do card para melhor visualização #}
-              <div class="alert alert-{{ category }} login-alert">{{ message }}</div>
-            {% endfor %}
-          {% endif %}
-        {% endwith %}
-
         <form method="POST" action="{{ url_for('login') }}" class="login-form">
             <div class="form-group">
                 <label for="username" class="form-label">Usuário:</label>

@@ -3,8 +3,6 @@
 <div class="form-container">
     <h2>Gestão do Caixa (Admin)</h2>
 
-    {% include "_flash_messages.html" %} {# Supondo que você tem um template para flash messages #}
-
     <div class="caixa-summary section-mb">
         <h3>Saldo Atual: <span style="color: {{ 'green' if saldo_atual >= 0 else 'red' }};">R$ {{ "%.2f"|format(saldo_atual) }}</span></h3>
     </div>

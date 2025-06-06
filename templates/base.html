@@ -26,7 +26,7 @@
     <nav id="sidebarNav">
         <a href="{{ url_for('associados') }}"><i class="fas fa-users fa-fw"></i> Associados</a>
         <a href="{{ url_for('convidados') }}"><i class="fas fa-user-tie fa-fw"></i> Convidados</a>
-        <a href="{{ url_for('public_caixa') }}"><i class="fas fa-cash-register fa-fw"></i> Caixa do Grupo</a>
+        <a href="{{ url_for('caixa_do_grupo') }}"><i class="fas fa-cash-register fa-fw"></i> Caixa (Público)</a>
         {% if current_user.is_authenticated %}
             <a href="{{ url_for('adicionar') }}"><i class="fas fa-plus-circle fa-fw"></i> Adicionar</a>
             <a href="{{ url_for('admin_caixa') }}"><i class="fas fa-edit fa-fw"></i> Gerenciar Caixa</a>

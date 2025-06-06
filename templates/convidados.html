@@ -17,7 +17,7 @@
             <td>{{ convidado.nome }}</td>
             <td>
                 {% set presenca = convidado.presencas|selectattr("data", "equalto", data_evento_fixa)|first %}
-                {{ presenca.status if presenca else 'Presente' }}
+                {{ presenca.status if presenca else '-' }}
             </td>
             <td> {% if current_user.is_authenticated %}
             <form action="{{ url_for('registrar_presenca', convidado_id=convidado.id) }}" method="post" id="form_presenca_{{ convidado.id }}">

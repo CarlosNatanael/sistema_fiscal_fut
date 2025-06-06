@@ -21,7 +21,17 @@
                 <td>
                     {# Lógica para buscar o pagamento do mes_atual #}
                     {% set pagamento_atual = associado.pagamentos|selectattr("mes", "equalto", mes_atual)|first %}
-                    {{ pagamento_atual.status if pagamento_atual else 'Pendente' }}
+                    {% set status_text = pagamento_atual.status if pagamento_atual else 'Pendente' %}
+                    
+                    {# Aplica uma classe CSS com base no status #}
+                    {% if status_text == 'OK' %}
+                        <span class="status-badge status-ok">{{ status_text }}</span>
+                    {% elif status_text == 'Pendente' %}
+                        <span class="status-badge status-pendente">{{ status_text }}</span>
+                    {% else %}
+                        {# Para outros status como 'NA' #}
+                        <span class="status-badge status-na">{{ status_text }}</span>
+                    {% endif %}
                 </td>
                 <td>
                     {% if pagamento_atual and pagamento_atual.data_pagamento %}

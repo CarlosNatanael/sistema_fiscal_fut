@@ -554,3 +554,32 @@ button:hover {
     }
 
 }
+.status-badge {
+    display: inline-block;
+    padding: 0.35em 0.65em; /* Padding para criar a "pílula" */
+    font-size: 0.8em;      /* Fonte um pouco menor que o texto da tabela */
+    font-weight: 700;      /* Negrito (peso 700 do Roboto) */
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: 0.35rem; /* Bordas arredondadas */
+    color: #fff;            /* Cor do texto branca por padrão */
+    text-transform: uppercase; /* Opcional: deixa o texto em maiúsculas */
+}
+
+/* Cor VERDE para status "OK" */
+.status-badge.status-ok {
+    background-color: #198754; /* Verde escuro (sucesso) */
+}
+
+/* Cor AMARELA para status "Pendente" */
+.status-badge.status-pendente {
+    background-color: #ffc107; /* Amarelo (alerta) */
+    color: #000;           /* Texto preto para melhor contraste com o amarelo */
+}
+
+/* Cor CINZA para outros status (ex: "NA") */
+.status-badge.status-na {
+    background-color: #6c757d; /* Cinza (secundário) */
+}

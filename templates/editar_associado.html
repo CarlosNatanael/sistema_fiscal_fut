@@ -4,14 +4,6 @@
 <div class="form-container">
     <h2>Editar Associado</h2>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          <div class="alert alert-{{ category }}">{{ message }}</div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
-
     <form method="POST" action="{{ url_for('editar_associado', associado_id=associado.id) }}">
         <div class="form-group">
             <label for="numero" class="form-label">Número do Associado:</label>

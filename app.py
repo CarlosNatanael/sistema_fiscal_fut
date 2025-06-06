@@ -7,6 +7,7 @@ from flask import flash
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
+from sqlalchemy import func
 import os
 
 # Configuração do caminho do banco de dados
@@ -134,37 +135,39 @@ def index():
 
 # ================= Caixa grupo ==============
 @app.route('/caixa')
-def public_caixa():
-    hoje = datetime.now()
-    mes_atual_para_caixa = hoje.strftime('%Y-%m')
+def caixa_do_grupo():
+    # --- Passo 1: Calcular o Saldo Total (histórico completo) ---
+    # Soma todas as entradas
+    total_entradas_query = db.session.query(func.sum(TransacaoCaixa.valor)).filter(TransacaoCaixa.tipo == 'entrada').scalar()
+    total_entradas = total_entradas_query or 0.0
 
-    pagamentos_mes_atual = Pagamento.query.filter(
-        Pagamento.mes == mes_atual_para_caixa,
-        Pagamento.status == 'OK',
-        Pagamento.valor != None
+    # Soma todas as saídas
+    total_saidas_query = db.session.query(func.sum(TransacaoCaixa.valor)).filter(TransacaoCaixa.tipo == 'saida').scalar()
+    total_saidas = total_saidas_query or 0.0
+    
+    saldo_total = total_entradas - total_saidas
+
+    # --- Passo 2: Calcular o Resumo do Mês Atual ---
+    hoje = datetime.now()
+    primeiro_dia_mes = hoje.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    
+    # Para obter o fim do mês, vamos ao primeiro dia do próximo mês e comparamos as datas que são menores que ele
+    primeiro_dia_prox_mes = (primeiro_dia_mes + relativedelta(months=1))
+    
+    transacoes_mes_atual = TransacaoCaixa.query.filter(
+        TransacaoCaixa.data >= primeiro_dia_mes,
+        TransacaoCaixa.data < primeiro_dia_prox_mes
     ).all()
 
-    total_arrecadado_mes_atual_associados = sum(p.valor for p in pagamentos_mes_atual if p.valor is not None) 
-
-    total_geral_mes_atual = total_arrecadado_mes_atual_associados
-
-    todos_pagamentos_ok = Pagamento.query.filter(Pagamento.status == 'OK', Pagamento.valor != None).order_by(Pagamento.mes.desc(), Pagamento.data_pagamento.desc()).all()
-
-    def format_mes_para_display(mes_yyyymm):
-        if mes_yyyymm:
-            try:
-                return datetime.strptime(mes_yyyymm, '%Y-%m').strftime('%m/%Y')
-            except ValueError:
-                return mes_yyyymm 
-        return ''
+    total_entradas_mes = sum(t.valor for t in transacoes_mes_atual if t.tipo == 'entrada')
+    total_saidas_mes = sum(t.valor for t in transacoes_mes_atual if t.tipo == 'saida')
 
     return render_template(
-        'caixa.html',
-        mes_atual_display=hoje.strftime('%m/%Y'),
-        total_arrecadado_mes_atual=total_geral_mes_atual,
-        pagamentos_recentes=pagamentos_mes_atual,
-        todos_pagamentos_historico=todos_pagamentos_ok,
-        format_mes_display=format_mes_para_display
+        'caixa_publico.html', # Usaremos um novo template para a visão pública
+        saldo_total=saldo_total,
+        total_entradas_mes=total_entradas_mes,
+        total_saidas_mes=total_saidas_mes,
+        mes_atual_display=hoje.strftime('%m/%Y')
     )
 
 @app.route('/admin/caixa', methods=['GET', 'POST'])
