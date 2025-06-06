@@ -12,9 +12,12 @@ body {
     line-height: 1.6;
     color: #333;
     background-color: #f5f5f5;
-    position: relative; /* Necessário se for usar overlays que cobrem o body */
+    position: relative;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
 }
 
 input, select, button, textarea {
@@ -137,6 +140,7 @@ main.container {
     padding-top: 20px;
     padding-bottom: 20px;
     transition: margin-left 0.3s ease-in-out, padding-left 0.3s ease-in-out;
+    flex-grow: 1;
     /* Adicionado padding-left na transição para alguns cenários de overlay */
 }
 
@@ -582,4 +586,74 @@ button:hover {
 /* Cor CINZA para outros status (ex: "NA") */
 .status-badge.status-na {
     background-color: #6c757d; /* Cinza (secundário) */
+}
+
+/* ======================================== */
+/* Rodapé Moderno (Footer)                 */
+/* ======================================== */
+.site-footer {
+    background: #1f2937; /* Um cinza-azulado bem escuro e moderno */
+    color: #9ca3af; /* Cor de texto cinza claro */
+    padding: 2rem 0;
+    margin-top: 4rem; /* Mais espaço acima do rodapé */
+    text-align: center;
+    font-size: 0.9rem;
+    position: relative; /* Necessário para a linha decorativa */
+}
+
+/* Linha decorativa no topo do rodapé */
+.site-footer::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px; /* Largura da linha */
+    height: 4px;
+    background-color: #007bff; /* Um azul mais vibrante para destaque */
+    border-radius: 2px;
+}
+
+.footer-content {
+    display: flex;
+    flex-direction: column; /* Em telas pequenas, fica um sobre o outro */
+    align-items: center;
+    gap: 1rem; /* Espaço entre o copyright e os créditos */
+}
+
+p.copyright {
+    margin: 0;
+}
+
+.developer-credit {
+    display: flex;
+    flex-direction: column; /* Em telas pequenas, o texto fica sobre os ícones */
+    align-items: center;
+    gap: 0.75rem; /* Espaço entre o texto e os ícones */
+    color: #d1d5db; /* Cor um pouco mais clara para o nome */
+    font-weight: 600;
+}
+
+.social-icons a {
+    color: #9ca3af; /* Mesma cor do texto base */
+    font-size: 1.4rem; /* Ícones maiores */
+    margin: 0 0.6rem; /* Espaçamento entre os ícones */
+    transition: color 0.3s ease, transform 0.3s ease;
+}
+
+.social-icons a:hover {
+    color: #ffffff; /* Branco ao passar o mouse */
+    transform: translateY(-3px); /* Efeito de flutuar ao passar o mouse */
+}
+
+/* Media Query para telas maiores (desktops/tablets) */
+@media (min-width: 768px) {
+    .footer-content {
+        flex-direction: row; /* Lado a lado em telas maiores */
+        justify-content: space-between; /* Copyright na esquerda, créditos na direita */
+    }
+
+    .developer-credit {
+        flex-direction: row; /* Texto e ícones na mesma linha */
+    }
 }
