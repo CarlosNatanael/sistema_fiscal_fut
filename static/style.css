@@ -661,3 +661,161 @@ p.copyright {
     background-color: #0dcaf0; /* Azul claro (info) */
     color: #000;
 }
+/* ======================================== */
+/* Janela Modal de Confirmação              */
+/* ======================================== */
+.modal-overlay {
+    display: none; /* Escondido por padrão */
+    position: fixed; /* Fica sobre todo o conteúdo */
+    z-index: 2000; /* Acima de tudo, até mesmo do header */
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto; /* Permite scroll se o conteúdo for grande */
+    background-color: rgba(0,0,0,0.6); /* Fundo preto semi-transparente */
+    justify-content: center;
+    align-items: center;
+    padding: 1rem;
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: auto;
+    padding: 25px 30px;
+    border: 1px solid #888;
+    width: 90%;
+    max-width: 450px;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    animation-name: animatetop;
+    animation-duration: 0.4s
+}
+
+@keyframes animatetop {
+  from {top: -300px; opacity: 0}
+  to {top: 0; opacity: 1}
+}
+
+.modal-content h4 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+}
+.modal-content p {
+    margin-bottom: 1.5rem;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+/* Nova classe de botão para perigo */
+.btn-danger {
+    color: #fff;
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+.btn-danger:hover {
+    color: #fff;
+    background-color: #bb2d3b;
+    border-color: #b02a37;
+}
+
+/* ======================================== */
+/* Ações da Tabela (Botões)                 */
+/* ======================================== */
+.actions-cell {
+    text-align: center; /* Centraliza o grupo de botões na célula */
+    min-width: 120px; /* Garante espaço mínimo para os 3 botões */
+}
+
+.btn-group {
+    display: inline-flex; /* Alinha os botões na mesma linha */
+    align-items: center;
+    gap: 6px; /* Espaço sutil entre os botões */
+}
+
+/* Garante que os ícones dentro dos botões pequenos fiquem bem centralizados */
+.btn-sm i {
+    vertical-align: middle;
+    width: 1em; /* Garante que ícones de larguras diferentes ocupem o mesmo espaço */
+}
+
+/* Nova classe de botão de Sucesso (para Pagamentos) */
+.btn-outline-success {
+    color: #198754;
+    border-color: #198754;
+}
+.btn-outline-success:hover {
+    color: #fff;
+    background-color: #198754;
+    border-color: #198754;
+}
+hr.sidebar-divider {
+    border: 0;
+    height: 1px;
+    background-color: #4a4a4a; /* Cor do divisor */
+    margin: 1rem; /* Espaçamento do divisor */
+}
+
+.transaction-list {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+.transaction-item {
+    display: flex;
+    align-items: center;
+    padding: 0.8rem 0.2rem;
+    border-bottom: 1px solid #f1f1f1;
+}
+.transaction-item:last-child {
+    border-bottom: none;
+}
+
+.transaction-icon {
+    font-size: 1.2rem;
+    margin-right: 15px;
+    width: 30px; /* Largura fixa para o container do ícone */
+    text-align: center;
+}
+.transaction-icon .entrada-icon {
+    color: #198754; /* Verde */
+}
+.transaction-icon .saida-icon {
+    color: #dc3545; /* Vermelho */
+}
+
+.transaction-details {
+    flex-grow: 1; /* Faz esta div ocupar o espaço restante */
+    display: flex;
+    flex-direction: column;
+}
+.transaction-description {
+    font-weight: 600; /* (bold do Roboto) */
+    color: #495057;
+}
+.transaction-date {
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+.transaction-amount {
+    font-weight: 700;
+    font-size: 1rem;
+    min-width: 90px; /* Garante alinhamento dos valores */
+    text-align: right;
+}
+
+/* As classes .valor-entrada e .valor-saida que já usamos
+   podem ser reutilizadas aqui para as cores dos valores */
+.valor-entrada {
+    color: #198754;
+}
+.valor-saida {
+    color: #dc3545;
+}

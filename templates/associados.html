@@ -40,11 +40,12 @@
                 </td>
                 {% if current_user.is_authenticated %}
                 <td>
-                    <a href="{{ url_for('editar_associado', associado_id=associado.id) }}" class="btn btn-sm btn-outline-primary">
-                        <i class="fas fa-edit"></i> Editar Associado
-                    </a>
-                    <a href="{{ url_for('historico_pagamentos_associado', associado_id=associado.id) }}" class="btn btn-sm btn-outline-info" style="margin-top: 5px;">
-                        <i class="fas fa-history"></i> Histórico Pag.
+                    <a href="{{ url_for('editar_associado', associado_id=associado.id) }}" class="btn btn-sm btn-outline-primary" title="Editar"><i class="fas fa-edit"></i></a>
+                    <button type="button" onclick="openDeleteModal('{{ url_for('remover_associado', associado_id=associado.id) }}', '{{ associado.nome }}')" class="btn btn-sm btn-danger" title="Remover">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                    <a href="{{ url_for('historico_pagamentos_associado', associado_id=associado.id) }}" class="btn btn-sm btn-outline-success" title="Gerenciar Pagamentos">
+                        <i class="fas fa-money-check-alt"></i>
                     </a>
                 </td>
                 {% endif %}

@@ -6,7 +6,7 @@
     <title>Futebol Clube</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
@@ -24,28 +24,34 @@
     </header>
 
     <nav id="sidebarNav">
+        <!-- Links Públicos (Sempre Visíveis) -->
         <a href="{{ url_for('associados') }}"><i class="fas fa-users fa-fw"></i> Associados</a>
         <a href="{{ url_for('convidados') }}"><i class="fas fa-user-tie fa-fw"></i> Convidados</a>
         <a href="{{ url_for('caixa_do_grupo') }}"><i class="fas fa-cash-register fa-fw"></i> Caixa (Público)</a>
+        
+        <hr class="sidebar-divider">
+        
+        <!-- Links de Administrador e Login -->
         {% if current_user.is_authenticated %}
-            <a href="{{ url_for('adicionar') }}"><i class="fas fa-plus-circle fa-fw"></i> Adicionar</a>
-            <a href="{{ url_for('admin_caixa') }}"><i class="fas fa-edit fa-fw"></i> Gerenciar Caixa</a>
-        <a href="{{ url_for('lista_associados_para_historico') }}"><i class="fas fa-file-invoice-dollar fa-fw"></i> Pagamentos</a>
-        <a href="{{ url_for('lista_convidados_para_historico_jogos') }}"><i class="fas fa-calendar-check fa-fw"></i> Jogos e Convidados</a>
+            <!-- Área de Gestão -->
+            <a href="{{ url_for('lista_associados_para_historico') }}"><i class="fas fa-file-invoice-dollar fa-fw"></i> Pagamentos</a>
+            <a href="{{ url_for('lista_convidados_para_historico_jogos') }}"><i class="fas fa-calendar-check fa-fw"></i> Jogos Convidados</a>
+            <a href="{{ url_for('admin_caixa') }}"><i class="fas fa-cogs fa-fw"></i> Gerenciar Caixa</a>
+            <a href="{{ url_for('adicionar') }}"><i class="fas fa-plus-circle fa-fw"></i> Adicionar Membros</a>
+            
+            <hr class="sidebar-divider">
+            
+            <!-- Conta do Admin -->
+            <a href="{{ url_for('change_password') }}"><i class="fas fa-key fa-fw"></i> Mudar Senha</a>
             <a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt fa-fw"></i> Logout ({{ current_user.username }})</a>
         {% else %}
+            <!-- Login -->
             <a href="{{ url_for('login') }}"><i class="fas fa-sign-in-alt fa-fw"></i> Login Admin</a>
         {% endif %}
     </nav>
 
     <main class="container">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages and request.endpoint != 'login' %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+        {% include "_flash_messages.html" ignore missing %}
         {% block content %}{% endblock %}
     </main>
 
@@ -55,7 +61,6 @@
             <div class="developer-credit">
                 <span>Desenvolvido por Carlos Natanael</span>
                 <div class="social-icons">
-                    <!-- Substitua '#' pelos seus links reais -->
                     <a href="https://github.com/CarlosNatanael" target="_blank" rel="noopener noreferrer" title="GitHub">
                         <i class="fab fa-github"></i>
                     </a>
@@ -64,23 +69,62 @@
         </div>
     </footer>
 
+    <div id="confirmDeleteModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h4>Confirmar Remoção</h4>
+            <p>Você tem certeza que deseja remover <strong id="itemName">este item</strong>? Esta ação não pode ser desfeita.</p>
+            <div class="modal-actions">
+                <button onclick="closeDeleteModal()" class="btn btn-secondary">Cancelar</button>
+                <form id="deleteForm" method="POST" style="margin: 0; padding: 0;">
+                    <button type="submit" class="btn btn-danger">Sim, Remover</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script>
+        // --- Constantes dos Elementos ---
         const menuToggleButton = document.getElementById('menuToggleButton');
         const sidebarNav = document.getElementById('sidebarNav');
-        const mainElement = document.querySelector('main.container'); // Seleciona o elemento <main class="container">
+        const mainElement = document.querySelector('main.container');
+        const modal = document.getElementById('confirmDeleteModal');
+        const deleteForm = document.getElementById('deleteForm');
+        const itemNameSpan = document.getElementById('itemName');
 
-        menuToggleButton.addEventListener('click', () => {
-            const isExpanded = menuToggleButton.getAttribute('aria-expanded') === 'true' || false;
-            menuToggleButton.setAttribute('aria-expanded', String(!isExpanded)); // Converte para string
-            sidebarNav.classList.toggle('open');
-
-            // Adiciona ou remove a classe para empurrar o conteúdo principal
-            if (sidebarNav.classList.contains('open')) {
-                if(mainElement) mainElement.classList.add('main-content-pushed');
-            } else {
-                if(mainElement) mainElement.classList.remove('main-content-pushed');
+        // --- Event Listener para o Botão do Menu ---
+        if (menuToggleButton) {
+            menuToggleButton.addEventListener('click', () => {
+                const isExpanded = menuToggleButton.getAttribute('aria-expanded') === 'true' || false;
+                menuToggleButton.setAttribute('aria-expanded', String(!isExpanded));
+                sidebarNav.classList.toggle('open');
+                
+                if (mainElement) {
+                    mainElement.classList.toggle('main-content-pushed');
+                }
+            });
+        }
+        
+        // --- Funções do Modal de Remoção (agora no escopo correto) ---
+        function openDeleteModal(url, itemName) {
+            if (deleteForm && itemNameSpan && modal) {
+                deleteForm.action = url;
+                itemNameSpan.textContent = `"${itemName}"`;
+                modal.style.display = 'flex';
             }
-        });
+        }
+
+        function closeDeleteModal() {
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        // --- Event Listener Global para fechar o modal clicando fora ---
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                closeDeleteModal();
+            }
+        }
     </script>
 
 </body>

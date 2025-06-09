@@ -25,7 +25,34 @@
             </p>
         </div>
     </div>
-        <div class="caixa-card pix-payment-card">
+    <div class="caixa-card">
+        <h4>Últimas Movimentações</h4>
+        {% if ultimas_movimentacoes %}
+        <ul class="transaction-list">
+            {% for transacao in ultimas_movimentacoes %}
+                <li class="transaction-item">
+                    <div class="transaction-icon">
+                        {% if transacao.tipo == 'entrada' %}
+                            <i class="fas fa-arrow-up entrada-icon"></i>
+                        {% else %}
+                            <i class="fas fa-arrow-down saida-icon"></i>
+                        {% endif %}
+                    </div>
+                    <div class="transaction-details">
+                        <span class="transaction-description">{{ transacao.descricao }}</span>
+                        <span class="transaction-date">{{ transacao.data.strftime('%d/%m/%Y') }}</span>
+                    </div>
+                    <div class="transaction-amount valor-{{ transacao.tipo }}">
+                        {{ '+ ' if transacao.tipo == 'entrada' else '- ' }}R$ {{ "%.2f"|format(transacao.valor) }}
+                    </div>
+                </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-center">Nenhuma movimentação registrada ainda.</p>
+        {% endif %}
+    </div>
+    <div class="caixa-card pix-payment-card">
         <h4>Pagar Mensalidade com PIX</h4>
         <p>Use o aplicativo do seu banco para pagar a mensalidade. Clique no botão para copiar a chave PIX do tesoureiro.</p>
         

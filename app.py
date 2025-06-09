@@ -1,9 +1,8 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, date, timedelta
 from dateutil.relativedelta import relativedelta
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
-from flask import flash
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
@@ -58,20 +57,20 @@ class Associado(db.Model):
     numero = db.Column(db.Integer, unique=True)
     nome = db.Column(db.String(100), nullable=False)
     apelido = db.Column(db.String(50))
-    pagamentos = db.relationship('Pagamento', backref='associado', lazy=True)
+    pagamentos = db.relationship('Pagamento', backref='associado', lazy=True, cascade="all, delete-orphan")
 
 class Convidado(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), nullable=False)
-    presencas = db.relationship('Presenca', backref='convidado', lazy=True)
+    presencas = db.relationship('Presenca', backref='convidado', lazy=True, cascade="all, delete-orphan")
 
 class Pagamento(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     associado_id = db.Column(db.Integer, db.ForeignKey('associado.id'))
-    mes = db.Column(db.String(7))  # Formato YYYY-MM
-    data_pagamento = db.Column(db.DateTime) # Data em que o pagamento foi feito
-    status = db.Column(db.String(20))  # OK, Pendente, NA
-    valor = db.Column(db.Float, nullable=True) # VALOR PAGO - importante para o caixa
+    mes = db.Column(db.String(7))
+    data_pagamento = db.Column(db.DateTime)
+    status = db.Column(db.String(20))
+    valor = db.Column(db.Float, nullable=True)
 
 class Presenca(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -95,12 +94,12 @@ class TransacaoCaixa(db.Model):
     tipo = db.Column(db.String(10), nullable=False)
     valor = db.Column(db.Float, nullable=False)
     
-    # Link para Pagamento de Associado
     pagamento_id = db.Column(db.Integer, db.ForeignKey('pagamento.id'), nullable=True)
+    # --- ALTERAÇÃO AQUI ---
     pagamento = db.relationship('Pagamento', backref=db.backref('transacao_caixa', uselist=False, cascade="all, delete-orphan"))
 
-    # ===== NOVA ADIÇÃO PARA CONVIDADOS =====
     presenca_id = db.Column(db.Integer, db.ForeignKey('presenca.id'), nullable=True, unique=True)
+    # --- ALTERAÇÃO AQUI ---
     presenca = db.relationship('Presenca', backref=db.backref('transacao_caixa', uselist=False, cascade="all, delete-orphan"))
     # ======================================
 
@@ -143,39 +142,39 @@ def index():
 # ================= Caixa grupo ==============
 @app.route('/caixa')
 def caixa_do_grupo():
-    # --- Passo 1: Calcular o Saldo Total (histórico completo) ---
-    # Soma todas as entradas
+    # --- Passo 1: Calcular o Saldo Total (permanece o mesmo) ---
     total_entradas_query = db.session.query(func.sum(TransacaoCaixa.valor)).filter(TransacaoCaixa.tipo == 'entrada').scalar()
     total_entradas = total_entradas_query or 0.0
 
-    # Soma todas as saídas
     total_saidas_query = db.session.query(func.sum(TransacaoCaixa.valor)).filter(TransacaoCaixa.tipo == 'saida').scalar()
     total_saidas = total_saidas_query or 0.0
     
     saldo_total = total_entradas - total_saidas
 
-    # --- Passo 2: Calcular o Resumo do Mês Atual ---
+    # --- Passo 2: Calcular o Resumo do Mês Atual (permanece o mesmo) ---
     hoje = datetime.now()
-    primeiro_dia_mes = hoje.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    
-    # Para obter o fim do mês, vamos ao primeiro dia do próximo mês e comparamos as datas que são menores que ele
-    primeiro_dia_prox_mes = (primeiro_dia_mes + relativedelta(months=1))
+    primeiro_dia_mes_atual = hoje.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    primeiro_dia_prox_mes = (primeiro_dia_mes_atual + relativedelta(months=1))
     
     transacoes_mes_atual = TransacaoCaixa.query.filter(
-        TransacaoCaixa.data >= primeiro_dia_mes,
+        TransacaoCaixa.data >= primeiro_dia_mes_atual,
         TransacaoCaixa.data < primeiro_dia_prox_mes
     ).all()
+    total_entradas_mes_atual = sum(t.valor for t in transacoes_mes_atual if t.tipo == 'entrada')
+    total_saidas_mes_atual = sum(t.valor for t in transacoes_mes_atual if t.tipo == 'saida')
 
-    total_entradas_mes = sum(t.valor for t in transacoes_mes_atual if t.tipo == 'entrada')
-    total_saidas_mes = sum(t.valor for t in transacoes_mes_atual if t.tipo == 'saida')
+    # --- Passo 3: NOVO - Buscar as Últimas Movimentações (Extrato Simplificado) ---
+    ultimas_movimentacoes = TransacaoCaixa.query.order_by(TransacaoCaixa.data.desc(), TransacaoCaixa.id.desc()).limit(7).all()
 
     return render_template(
-        'caixa_publico.html', # Usaremos um novo template para a visão pública
+        'caixa_publico.html',
         saldo_total=saldo_total,
-        total_entradas_mes=total_entradas_mes,
-        total_saidas_mes=total_saidas_mes,
-        mes_atual_display=hoje.strftime('%m/%Y')
+        total_entradas_mes=total_entradas_mes_atual,
+        total_saidas_mes=total_saidas_mes_atual,
+        mes_atual_display=hoje.strftime('%m/%Y'),
+        ultimas_movimentacoes=ultimas_movimentacoes # Passa a nova lista para o template
     )
+
 
 @app.route('/admin/caixa', methods=['GET', 'POST'])
 @login_required
@@ -319,17 +318,12 @@ def historico_pagamentos_associado(associado_id):
 def convidados():
     # --- Passo 1: Calcular a data do jogo atual (próximo sábado) ---
     hoje = date.today()
-    # weekday() -> Segunda-feira é 0 e Domingo é 6. Sábado é 5.
-    # Esta linha calcula quantos dias faltam para o próximo sábado.
     dias_para_sabado = (5 - hoje.weekday() + 7) % 7
     data_proximo_jogo = hoje + timedelta(days=dias_para_sabado)
-
     # --- Passo 2: Preparar os dados de cada convidado para o template ---
     todos_convidados = Convidado.query.order_by(Convidado.nome).all()
     lista_convidados_display = []
-
     for convidado in todos_convidados:
-        # Busca a presença específica para a data do próximo jogo
         presenca_proximo_jogo = Presenca.query.filter_by(
             convidado_id=convidado.id,
             data=data_proximo_jogo
@@ -340,7 +334,6 @@ def convidados():
 
         if presenca_proximo_jogo:
             status_presenca = presenca_proximo_jogo.status
-            # O status de pagamento só é relevante se o convidado estiver presente
             if status_presenca == 'Presente':
                 status_pagamento = presenca_proximo_jogo.pagamento_jogo
         
@@ -456,7 +449,7 @@ def registrar_pagamento(associado_id):
     if valor_pago_str is not None:
         valor_pago_str = valor_pago_str.strip()
 
-    print(f"DEBUG: Registrar Pagamento - Associado: {associado_info.nome} (ID: {associado_id}), Mês: {mes}, Status: {status}, Data Pag. Input: {data_pagamento_str}, Valor Pago Input: '{valor_pago_str}'")
+    print(f"\nDEBUG: Registrar Pagamento - Associado: {associado_info.nome} (ID: {associado_id}), Mês: {mes}, Status: {status}, Data Pag. Input: {data_pagamento_str}, Valor Pago Input: '{valor_pago_str}'")
 
     data_pagamento_obj = None
     valor_pago_obj = None
@@ -552,7 +545,7 @@ def registrar_pagamento(associado_id):
     try:
         db.session.commit()
         flash('Pagamento e/ou transação do caixa atualizados com sucesso!', 'success')
-        print(f"DEBUG: Pagamento e TransacaoCaixa COMITADOS - Associado ID: {associado_id}, Mês: {mes}, Status: {status}")
+        print(f"DEBUG: Pagamento e TransacaoCaixa COMITADOS - Associado ID: {associado_id}, Mês: {mes}, Status: {status}\n")
     except Exception as e:
         db.session.rollback()
         flash(f'Erro ao salvar alterações: {str(e)}', 'danger')
@@ -690,6 +683,57 @@ def editar_convidado(convidado_id):
         return redirect(url_for('convidados'))
     
     return render_template('editar_convidado.html', convidado=convidado)
+
+@app.route('/associado/remover/<int:associado_id>', methods=['POST'])
+@login_required
+def remover_associado(associado_id):
+    associado_para_remover = Associado.query.get_or_404(associado_id)
+    nome_removido = associado_para_remover.nome
+    try:
+        db.session.delete(associado_para_remover)
+        db.session.commit()
+        flash(f'Associado "{nome_removido}" e todos os seus registros foram removidos com sucesso.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao remover o associado: {str(e)}', 'danger')
+    return redirect(url_for('associados'))
+
+@app.route('/convidado/remover/<int:convidado_id>', methods=['POST'])
+@login_required
+def remover_convidado(convidado_id):
+    convidado_para_remover = Convidado.query.get_or_404(convidado_id)
+    nome_removido = convidado_para_remover.nome
+    try:
+        db.session.delete(convidado_para_remover)
+        db.session.commit()
+        flash(f'Convidado "{nome_removido}" e todos os seus registros foram removidos com sucesso.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao remover o convidado: {str(e)}', 'danger')
+    return redirect(url_for('lista_convidados_para_historico_jogos'))
+
+@app.route('/admin/mudar-senha', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    if request.method == 'POST':
+        old_password = request.form.get('old_password')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+
+        if not current_user.check_password(old_password):
+            flash('A senha antiga está incorreta.', 'danger')
+        elif new_password != confirm_password:
+            flash('A nova senha e a confirmação não correspondem.', 'danger')
+        elif len(new_password) < 6:
+            flash('A nova senha deve ter pelo menos 6 caracteres.', 'danger')
+        else:
+            current_user.set_password(new_password)
+            db.session.commit()
+            flash('Sua senha foi atualizada com sucesso!', 'success')
+            return redirect(url_for('associados')) # Redireciona para a página principal após sucesso
+
+    return render_template('change_password.html')
+
 
 if __name__ == '__main__':
     with app.app_context():
