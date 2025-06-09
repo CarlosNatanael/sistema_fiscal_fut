@@ -657,3 +657,7 @@ p.copyright {
         flex-direction: row; /* Texto e ícones na mesma linha */
     }
 }
+.status-badge.status-dispensado {
+    background-color: #0dcaf0; /* Azul claro (info) */
+    color: #000;
+}

@@ -1,79 +1,63 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h2>Lista de Convidados</h2>
-<table>
-    <thead>
-        <tr>
-            <th>Nome dos Convidados</th>
-            <th>Dia 31/05/2025</th> <th>Dia {{ proxima_data }}</th> {% if current_user.is_authenticated %}
-            <th>Ações</th> {# Nova coluna #}
-            {% endif %}
-        </tr>
-    </thead>
-    <tbody>
-        {% for convidado in convidados %}
-        <tr>
-            <td>{{ convidado.nome }}</td>
-            <td>
-                {% set presenca = convidado.presencas|selectattr("data", "equalto", data_evento_fixa)|first %}
-                {{ presenca.status if presenca else '-' }}
-            </td>
-            <td> {% if current_user.is_authenticated %}
-            <form action="{{ url_for('registrar_presenca', convidado_id=convidado.id) }}" method="post" id="form_presenca_{{ convidado.id }}">
-                <input type="hidden" name="data" value="{{ proxima_data }}">
-                <select name="status" onchange="togglePagamentoJogoField('{{ convidado.id }}')">
-                    <option value="Presente">Presente</option>
-                    <option value="Faltou" selected>Faltou</option> {# Ou o status atual #}
-                </select>
-            
-                <div id="pagamento_jogo_div_{{ convidado.id }}" style="display:none; margin-top:5px;">
-                    <label for="pagamento_jogo_status_{{ convidado.id }}">Pagou Jogo?</label>
-                    <select name="pagamento_jogo_status" id="pagamento_jogo_status_{{ convidado.id }}">
-                        <option value="Pago">Pago</option>
-                        <option value="Pendente" selected>Pendente</option>
-                        <option value="Dispensado">Dispensado</option>
-                    </select>
-                </div>
-                <button type="submit">Registrar</button>
-            </form>
-            </td>
-            {% endif %}
-            {% if current_user.is_authenticated %}
-            <td> {# Célula para ações #}
-                <a href="{{ url_for('editar_convidado', convidado_id=convidado.id) }}" class="btn btn-sm btn-outline-primary">
-                    <i class="fas fa-edit"></i> Editar
-                </a>
-                {# Botão de Excluir pode vir aqui #}
-            </td>
-            {% endif %}
-        </tr>
-        {% endfor %}
-            {% if not convidados %}
-            <tr>
-                <td colspan="{% if current_user.is_authenticated %}5{% else %}4{% endif %}">Nenhum convidado encontrado.</td>
-            </tr>
-            {% endif %}
-    </tbody>
-</table>
-<script>
-// Função JS para mostrar/esconder o campo de pagamento do jogo
-// (coloque em um local apropriado, talvez no final do body ou em um arquivo JS)
-function togglePagamentoJogoField(convidadoId) {
-    const form = document.getElementById('form_presenca_' + convidadoId);
-    const statusPresenca = form.querySelector('select[name="status"]').value;
-    const pagamentoDiv = document.getElementById('pagamento_jogo_div_' + convidadoId);
-    if (statusPresenca === 'Presente') {
-        pagamentoDiv.style.display = 'block'; // ou 'flex' etc.
-    } else {
-        pagamentoDiv.style.display = 'none';
-    }
-}
-// Chamar para estado inicial (se necessário, baseado no status carregado)
-// document.addEventListener('DOMContentLoaded', () => {
-//    document.querySelectorAll('select[name="status"]').forEach(s => {
-//        if (s.onchange) s.onchange(); // Simula o onchange para setar o estado inicial
-//    });
-// });
-</script>
+<div class="container">
+    <h2 class="text-center">Lista de Convidados</h2>
+    <h4 class="text-center text-muted">Jogo de {{ data_proximo_jogo_display }}</h4>
+    <p class="text-center text-muted" style="margin-bottom: 2rem;">Status de presença e pagamento da taxa para o próximo jogo.</p>
+    
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Nome do Convidado</th>
+                    <th>Presença</th>
+                    <th>Pagamento da Taxa</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for convidado in convidados_display %}
+                <tr>
+                    <td>{{ convidado.nome }}</td>
+                    <td>
+                        {# Aplica cor para Presença #}
+                        {% if convidado.status_presenca == 'Presente' %}
+                            <span class="status-badge status-ok">{{ convidado.status_presenca }}</span>
+                        {% elif convidado.status_presenca == 'Faltou' %}
+                            <span class="status-badge status-na">{{ convidado.status_presenca }}</span>
+                        {% else %}
+                            <span>{{ convidado.status_presenca }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {# Aplica cor para Status do Pagamento #}
+                        {% if convidado.status_pagamento == 'Pago' %}
+                            <span class="status-badge status-ok">{{ convidado.status_pagamento }}</span>
+                        {% elif convidado.status_pagamento == 'Pendente' %}
+                            <span class="status-badge status-pendente">{{ convidado.status_pagamento }}</span>
+                        {% elif convidado.status_pagamento == 'Dispensado' %}
+                            <span class="status-badge status-dispensado">{{ convidado.status_pagamento }}</span>
+                        {% else %}
+                            <span>{{ convidado.status_pagamento }}</span> {# Para 'N/A' #}
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="3">Nenhum convidado cadastrado.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {# Adiciona um link para o histórico completo se o admin estiver logado #}
+    {% if current_user.is_authenticated %}
+    <div style="text-align: center; margin-top: 2rem;">
+        <a href="{{ url_for('lista_convidados_para_historico_jogos') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-history"></i> Ver Histórico Completo de Convidados
+        </a>
+    </div>
+    {% endif %}
+</div>
 {% endblock %}

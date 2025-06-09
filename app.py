@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from dateutil.relativedelta import relativedelta
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask import flash
@@ -90,12 +90,19 @@ class PagamentoJogoConvidado(db.Model):
 
 class TransacaoCaixa(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    data = db.Column(db.DateTime, nullable=False, default=datetime.utcnow) # Data da transação
+    data = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     descricao = db.Column(db.String(200), nullable=False)
-    tipo = db.Column(db.String(10), nullable=False) 
-    valor = db.Column(db.Float, nullable=False) 
+    tipo = db.Column(db.String(10), nullable=False)
+    valor = db.Column(db.Float, nullable=False)
+    
+    # Link para Pagamento de Associado
     pagamento_id = db.Column(db.Integer, db.ForeignKey('pagamento.id'), nullable=True)
-    pagamento = db.relationship('Pagamento', backref=db.backref('transacao_caixa', uselist=False))
+    pagamento = db.relationship('Pagamento', backref=db.backref('transacao_caixa', uselist=False, cascade="all, delete-orphan"))
+
+    # ===== NOVA ADIÇÃO PARA CONVIDADOS =====
+    presenca_id = db.Column(db.Integer, db.ForeignKey('presenca.id'), nullable=True, unique=True)
+    presenca = db.relationship('Presenca', backref=db.backref('transacao_caixa', uselist=False, cascade="all, delete-orphan"))
+    # ======================================
 
     def __repr__(self):
         return f"<TransacaoCaixa {self.id} [{self.tipo}] {self.descricao} - R${self.valor:.2f}>"
@@ -308,19 +315,45 @@ def historico_pagamentos_associado(associado_id):
     )
 
 # ================= Convidados ==============
-@app.route('/convidados') #
+@app.route('/convidados')
 def convidados():
-    convidados_query = Convidado.query.all() # Renomeei para evitar conflito com o nome da função, boa prática
-    proxima_data = "07/06/2025"  # Isso poderia ser dinâmico
+    # --- Passo 1: Calcular a data do jogo atual (próximo sábado) ---
+    hoje = date.today()
+    # weekday() -> Segunda-feira é 0 e Domingo é 6. Sábado é 5.
+    # Esta linha calcula quantos dias faltam para o próximo sábado.
+    dias_para_sabado = (5 - hoje.weekday() + 7) % 7
+    data_proximo_jogo = hoje + timedelta(days=dias_para_sabado)
 
-    # Crie a data específica aqui
-    data_evento_fixa = date(2025, 5, 31)
+    # --- Passo 2: Preparar os dados de cada convidado para o template ---
+    todos_convidados = Convidado.query.order_by(Convidado.nome).all()
+    lista_convidados_display = []
+
+    for convidado in todos_convidados:
+        # Busca a presença específica para a data do próximo jogo
+        presenca_proximo_jogo = Presenca.query.filter_by(
+            convidado_id=convidado.id,
+            data=data_proximo_jogo
+        ).first()
+
+        status_presenca = 'Não Registrado'
+        status_pagamento = 'N/A'  # Não aplicável por padrão
+
+        if presenca_proximo_jogo:
+            status_presenca = presenca_proximo_jogo.status
+            # O status de pagamento só é relevante se o convidado estiver presente
+            if status_presenca == 'Presente':
+                status_pagamento = presenca_proximo_jogo.pagamento_jogo
+        
+        lista_convidados_display.append({
+            'nome': convidado.nome,
+            'status_presenca': status_presenca,
+            'status_pagamento': status_pagamento
+        })
 
     return render_template(
-        'convidados.html',
-        convidados=convidados_query, # Passando a lista de convidados
-        proxima_data=proxima_data,
-        data_evento_fixa=data_evento_fixa # Passe a data para o template
+        'convidados.html', 
+        convidados_display=lista_convidados_display,
+        data_proximo_jogo_display=data_proximo_jogo.strftime('%d/%m/%Y')
     )
 
 @app.route('/convidados/historico')
@@ -530,56 +563,98 @@ def registrar_pagamento(associado_id):
 @app.route('/registrar_presenca/<int:convidado_id>', methods=['POST'])
 @login_required
 def registrar_presenca(convidado_id):
-    data_str = request.form['data']  # Espera-se DD/MM/YYYY do formulário
-    status_presenca = request.form['status'] # "Presente", "Faltou", "Não Registrado"
-    # Pega o status do pagamento do jogo, default para 'Pendente' se não enviado ou se não for relevante
+    # Definir o valor fixo da taxa de jogo do convidado
+    TAXA_JOGO_CONVIDADO = 10.00
+    
+    # Busca o objeto Convidado no início para ter acesso ao nome
+    convidado_info = Convidado.query.get(convidado_id)
+    if not convidado_info:
+        flash(f'Convidado com ID {convidado_id} não encontrado.', 'danger')
+        return redirect(url_for('lista_convidados_para_historico_jogos'))
+
+    data_str = request.form['data']
+    status_presenca = request.form['status']
     status_pagamento_jogo = request.form.get('pagamento_jogo_status', 'Pendente')
 
-    print(f"DEBUG: Registrar Presenca - Convidado ID: {convidado_id}, Data: {data_str}, Status Pres.: {status_presenca}, Status Pag. Jogo: {status_pagamento_jogo}")
+    print(f"DEBUG: Registrar Presenca - Convidado: {convidado_info.nome}, Data: {data_str}, Status Pres.: {status_presenca}, Status Pag. Jogo: {status_pagamento_jogo}")
 
     try:
         data_obj = datetime.strptime(data_str, '%d/%m/%Y').date()
     except ValueError:
         flash(f'Formato de data inválido: "{data_str}". Use o formato DD/MM/AAAA.', 'danger')
-        return redirect(request.referrer or url_for('lista_convidados_para_historico_jogos'))
+        return redirect(url_for('historico_jogos_convidado', convidado_id=convidado_id))
 
-    presenca_existente = Presenca.query.filter_by(convidado_id=convidado_id, data=data_obj).first()
+    presenca_obj = Presenca.query.filter_by(convidado_id=convidado_id, data=data_obj).first()
+    pagamento_anterior_era_pago = False
 
-    if status_presenca == 'Não Registrado':
-        if presenca_existente:
-            print(f"DEBUG: Deletando registro de presença para Data {data_obj} pois status é 'Não Registrado'")
-            db.session.delete(presenca_existente)
-            flash('Registro de presença e pagamento do jogo removido.', 'success')
-        else:
-            flash('Nenhum registro para remover.', 'info') # Ou não faz nada
-    elif presenca_existente:
+    if presenca_obj:
         print(f"DEBUG: Presença existente para Data {data_obj}. Atualizando.")
-        presenca_existente.status = status_presenca
-        if status_presenca == 'Presente':
-            presenca_existente.pagamento_jogo = status_pagamento_jogo
-        else:  # Se Faltou
-            presenca_existente.pagamento_jogo = 'N/A' # Não aplicável ou pode manter Pendente
-        flash('Presença e pagamento do jogo atualizados com sucesso!', 'success')
-    else: # Criar novo registro de presença (se não for "Não Registrado")
+        # Guarda o status de pagamento anterior, se a presença já existia
+        if presenca_obj.pagamento_jogo == 'Pago':
+            pagamento_anterior_era_pago = True
+    else:
         print(f"DEBUG: Nova presença para Data {data_obj}. Criando.")
-        nova_presenca = Presenca(
-            convidado_id=convidado_id,
-            data=data_obj,
-            status=status_presenca,
-            pagamento_jogo=(status_pagamento_jogo if status_presenca == 'Presente' else 'N/A')
-        )
-        db.session.add(nova_presenca)
-        flash('Presença e pagamento do jogo registrados com sucesso!', 'success')
-    
+        presenca_obj = Presenca(convidado_id=convidado_id, data=data_obj)
+        db.session.add(presenca_obj)
+
+    # Atualiza o objeto Presenca
+    presenca_obj.status = status_presenca
+    if status_presenca == 'Presente':
+        presenca_obj.pagamento_jogo = status_pagamento_jogo
+    else:
+        presenca_obj.pagamento_jogo = 'N/A' # Não aplicável se faltou ou não registrado
+
+    # Flush para garantir que presenca_obj tenha um ID se for novo
+    try:
+        db.session.flush()
+    except Exception as e_flush:
+        db.session.rollback()
+        flash(f'Erro ao preparar dados da presença: {str(e_flush)}', 'danger')
+        return redirect(url_for('historico_jogos_convidado', convidado_id=convidado_id))
+
+
+    # Lógica para TransacaoCaixa
+    # A transação está vinculada à presença, então precisamos do ID da presença.
+    # O flush acima deve garantir que presenca_obj.id exista.
+    if presenca_obj.id:
+        transacao_existente = TransacaoCaixa.query.filter_by(presenca_id=presenca_obj.id).first()
+        
+        # Caso 1: Novo pagamento é 'Pago'
+        if presenca_obj.pagamento_jogo == 'Pago':
+            descricao_transacao = f"Taxa de jogo ({data_obj.strftime('%d/%m')}) - {convidado_info.nome}"
+            if transacao_existente:
+                # Se já existia (ex: valor mudou), apenas atualiza
+                if transacao_existente.valor != TAXA_JOGO_CONVIDADO:
+                    transacao_existente.valor = TAXA_JOGO_CONVIDADO
+                    transacao_existente.descricao = f"{descricao_transacao} (Atualizado)"
+                    print(f"DEBUG: TransacaoCaixa para Presenca ID {presenca_obj.id} ATUALIZADA.")
+            else:
+                # Se não existia, cria uma nova
+                nova_transacao = TransacaoCaixa(
+                    data=datetime.combine(data_obj, datetime.min.time()),
+                    descricao=descricao_transacao,
+                    tipo='entrada',
+                    valor=TAXA_JOGO_CONVIDADO,
+                    presenca_id=presenca_obj.id # Vincula à presença
+                )
+                db.session.add(nova_transacao)
+                print(f"DEBUG: TransacaoCaixa para Presenca ID {presenca_obj.id} CRIADA.")
+        
+        # Caso 2: Pagamento anterior era 'Pago' e agora não é mais
+        elif pagamento_anterior_era_pago and presenca_obj.pagamento_jogo != 'Pago':
+            if transacao_existente:
+                db.session.delete(transacao_existente)
+                print(f"DEBUG: TransacaoCaixa para Presenca ID {presenca_obj.id} REMOVIDA.")
+
     try:
         db.session.commit()
-        print(f"DEBUG: Commit da presença/pagamento do jogo bem-sucedido.")
+        flash('Presença e taxa do jogo atualizadas com sucesso!', 'success')
+        print("DEBUG: Commit realizado com sucesso.")
     except Exception as e:
         db.session.rollback()
-        flash(f'Erro ao salvar presença/pagamento do jogo: {str(e)}', 'danger')
-        print(f"DEBUG: ERRO no commit da presença/pagamento do jogo: {str(e)}")
-            
-    # Redireciona de volta para a página de histórico do convidado específico
+        flash(f'Erro ao salvar alterações: {str(e)}', 'danger')
+        print(f"DEBUG: ERRO no commit final: {str(e)}")
+
     return redirect(url_for('historico_jogos_convidado', convidado_id=convidado_id))
 
 @app.route('/associado/editar/<int:associado_id>', methods=['GET', 'POST'])
